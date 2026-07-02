@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 
-import { resolveLocaleText } from '@/composables/useAppI18n';
+import { resolveLocaleText, useAppI18n } from '@/composables/useAppI18n';
+import { useSettingsStore } from '@/stores/settings';
 
 describe('resolveLocaleText', () => {
   it('returns bilingual text by default mode', () => {
@@ -30,5 +32,22 @@ describe('resolveLocaleText', () => {
         },
       }),
     ).toBe('Trade');
+  });
+});
+
+describe('useAppI18n', () => {
+  it('uses the persisted settings locale mode', () => {
+    setActivePinia(createPinia());
+    const settingsStore = useSettingsStore();
+    const { t } = useAppI18n();
+
+    expect(settingsStore.localeMode).toBe('bilingual');
+    expect(t('nav.trade')).toBe('Trade / 交易');
+
+    settingsStore.localeMode = 'en';
+    expect(t('nav.trade')).toBe('Trade');
+
+    settingsStore.localeMode = 'zh-CN';
+    expect(t('nav.trade')).toBe('交易');
   });
 });

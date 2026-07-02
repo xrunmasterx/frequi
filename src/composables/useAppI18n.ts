@@ -45,3 +45,15 @@ export function resolveLocaleText(
 
   return zhText ? `${enText} / ${zhText}` : enText;
 }
+
+export function useAppI18n() {
+  const settingsStore = useSettingsStore();
+
+  function t(key: LocaleKey): string {
+    return resolveLocaleText(key, settingsStore.localeMode);
+  }
+
+  return {
+    t,
+  };
+}

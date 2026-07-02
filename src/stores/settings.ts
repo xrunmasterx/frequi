@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { LocaleMode } from '@/locales/keys';
 import { TimeSummaryCols, TimeSummaryOptions } from '@/types';
 import type { ThemeName, UiVersion } from '@/types';
 import { FtWsMessageTypes } from '@/types/wsMessageTypes';
@@ -23,6 +24,7 @@ export const useSettingsStore = defineStore(
     const timezone = ref('UTC');
     const backgroundSync = ref(true);
     const currentTheme = ref('dark' as ThemeName);
+    const localeMode = ref<LocaleMode>('bilingual');
     const useHeikinAshiCandles = ref(false);
     const showMarkArea = ref(true);
     const useReducedPairCalls = ref(true);
@@ -66,6 +68,7 @@ export const useSettingsStore = defineStore(
       timezone,
       backgroundSync,
       currentTheme,
+      localeMode,
       useHeikinAshiCandles,
       showMarkArea,
       useReducedPairCalls,
