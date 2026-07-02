@@ -262,14 +262,14 @@ function editBotLogin(botId: string) {
           <div
             v-if="!settingsStore.confirmDialog"
             class="my-auto me-5 flex text-yellow-300"
-            title="Confirm dialog deactivated, Forced exits will be executed immediately. Be careful."
+            :title="t('nav.confirmDialogDisabledWarning')"
           >
             <i-mdi-run-fast />
             <i-mdi-alert />
           </div>
           <div class="hidden md:flex md:flex-nowrap items-center nav-item me-2">
-            <span class="text-sm me-2" title="Bot name">
-              {{ (botStore.activeBot && botStore.activeBot.botName) || 'No bot selected' }}
+            <span class="text-sm me-2" :title="t('nav.botName')">
+              {{ (botStore.activeBot && botStore.activeBot.botName) || t('nav.noBotSelected') }}
             </span>
             <BotEntry
               v-if="botStore.selectedBotObj"
@@ -280,7 +280,7 @@ function editBotLogin(botId: string) {
             />
             <BotSelect />
 
-            <ReloadControl class="me-3" title="Confirm Dialog deactivated." />
+            <ReloadControl class="me-3" :title="t('nav.confirmDialogDisabled')" />
           </div>
           <div v-if="botStore.hasBots" class="flex items-center">
             <!-- Hide dropdown on xs, instead show below  -->
@@ -297,7 +297,7 @@ function editBotLogin(botId: string) {
             color="neutral"
             @click="loginDialog({})"
             icon="mdi:login"
-            >Login
+            >{{ t('nav.login') }}
           </UButton>
         </div>
 
@@ -327,15 +327,17 @@ function editBotLogin(botId: string) {
                   orientation="vertical"
                 />
                 <USeparator class="my-2" />
-                <span>Version: {{ settingsStore.uiVersion }}</span>
+                <span>{{ t('nav.version') }}: {{ settingsStore.uiVersion }}</span>
 
                 <div class="flex flex-row items-center justify-center">
                   <ThemeSelect show-text />
                 </div>
                 <USeparator class="my-2" />
                 <div class="flex flex-row items-center">
-                  <span class="text-sm me-2" title="Bot name">
-                    {{ (botStore.activeBot && botStore.activeBot.botName) || 'No bot selected' }}
+                  <span class="text-sm me-2" :title="t('nav.botName')">
+                    {{
+                      (botStore.activeBot && botStore.activeBot.botName) || t('nav.noBotSelected')
+                    }}
                   </span>
                   <BotEntry
                     v-if="botStore.selectedBotObj"

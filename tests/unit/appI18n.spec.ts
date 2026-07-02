@@ -14,6 +14,14 @@ describe('resolveLocaleText', () => {
     expect(resolveLocaleText('nav.chart', 'bilingual')).toBe('Chart / 图表');
     expect(resolveLocaleText('nav.logs', 'bilingual')).toBe('Logs / 日志');
     expect(resolveLocaleText('nav.settings', 'bilingual')).toBe('Settings / 设置');
+    expect(resolveLocaleText('nav.login', 'bilingual')).toBe('Login / 登录');
+    expect(resolveLocaleText('nav.noBotSelected', 'bilingual')).toBe(
+      'No bot selected / 未选择机器人',
+    );
+    expect(resolveLocaleText('nav.version', 'bilingual')).toBe('Version / 版本');
+    expect(resolveLocaleText('nav.confirmDialogDisabled', 'bilingual')).toBe(
+      'Confirm Dialog deactivated. / 确认对话框已停用。',
+    );
     expect(resolveLocaleText('nav.trades', 'bilingual')).toBe('Trades / 交易');
   });
 
@@ -63,6 +71,9 @@ describe('settings locale labels', () => {
     );
     expect(resolveLocaleText('settings.languageChinese', 'zh-CN')).toBe('简体中文');
     expect(resolveLocaleText('settings.languageEnglish', 'en')).toBe('English');
+    expect(resolveLocaleText('settings.confirmDialogTitleBarHint', 'bilingual')).toBe(
+      'Title bar warning icons are shown when confirmation dialogs are disabled. / 确认对话框停用时，标题栏会显示警告图标。',
+    );
   });
 });
 

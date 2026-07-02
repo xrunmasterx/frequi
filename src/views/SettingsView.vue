@@ -108,9 +108,11 @@ const resetDynamicLayout = () => {
           {{ t('settings.confirmDialog') }}
           <template #hint
             >{{ t('settings.confirmDialogHint') }}<br />
-            This will also show <i-mdi-run-fast class="text-yellow-300 inline" />
-            <i-mdi-alert class="text-yellow-300 inline" />
-            in the title bar.
+            <span class="inline-flex items-center gap-1">
+              <i-mdi-run-fast class="text-yellow-300 inline" />
+              <i-mdi-alert class="text-yellow-300 inline" />
+              <span>{{ t('settings.confirmDialogTitleBarHint') }}</span>
+            </span>
           </template>
         </BaseCheckbox>
 

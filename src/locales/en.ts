@@ -15,7 +15,14 @@ export const en = {
     unlockLayout: 'Unlock Layout',
     resetLayout: 'Reset Layout',
     logout: 'Logout',
+    login: 'Login',
     botNotFound: 'Bot not found',
+    botName: 'Bot name',
+    noBotSelected: 'No bot selected',
+    version: 'Version',
+    confirmDialogDisabled: 'Confirm Dialog deactivated.',
+    confirmDialogDisabledWarning:
+      'Confirm dialog deactivated, Forced exits will be executed immediately. Be careful.',
     trades: 'Trades',
     history: 'History',
     pairlist: 'Pairlist',
@@ -47,6 +54,8 @@ export const en = {
     backgroundSyncHint: 'Keep background sync running while other bots are selected.',
     confirmDialog: 'Show Confirm Dialog for Trade Exits',
     confirmDialogHint: 'Use confirmation dialogs when force-exiting a trade.',
+    confirmDialogTitleBarHint:
+      'Title bar warning icons are shown when confirmation dialogs are disabled.',
     multiPaneButtonsShowText: 'Show Text on Multi Pane Buttons',
     multiPaneButtonsShowTextHint:
       'Show text on multi pane buttons. If disabled, only shows images.',

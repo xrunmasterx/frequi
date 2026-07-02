@@ -17,8 +17,14 @@ test.describe('Bilingual i18n', () => {
     await page.getByRole('option', { name: /^English \/ (?!Chinese)/ }).click();
     await expect(page.getByRole('link', { name: /^Trade$/ })).toBeVisible();
 
+    await page.reload();
+    await expect(page.getByRole('link', { name: /^Trade$/ })).toBeVisible();
+
     await page.getByTestId('locale-mode-select').click();
     await page.getByRole('option', { name: /English \/ Chinese/ }).click();
+    await expect(page.getByRole('link', { name: /Trade \/ 交易/ })).toBeVisible();
+
+    await page.reload();
     await expect(page.getByRole('link', { name: /Trade \/ 交易/ })).toBeVisible();
 
     const settings = await page.evaluate(() =>
