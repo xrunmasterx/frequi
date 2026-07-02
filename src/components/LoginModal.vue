@@ -9,6 +9,7 @@ defineProps<LoginModalProps>();
 const emit = defineEmits<{
   close: [value: boolean];
 }>();
+const { t } = useAppI18n();
 
 function loginResult(result: boolean) {
   if (result) {
@@ -19,7 +20,7 @@ function loginResult(result: boolean) {
 </script>
 
 <template>
-  <UModal title="Login to your bot" description="Enter your bot credentials to connect">
+  <UModal :title="t('login.modalTitle')" :description="t('login.modalDescription')">
     <template #body>
       <BotLogin in-modal :existing-auth="loginInfo" @login-result="loginResult" />
     </template>

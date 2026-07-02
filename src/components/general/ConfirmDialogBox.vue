@@ -6,27 +6,27 @@ export interface ConfirmDialogBoxProps {
   cancelText?: string;
   confirmText?: string;
 }
-withDefaults(defineProps<ConfirmDialogBoxProps>(), {
-  description: 'Confirmation',
-  cancelText: 'Cancel',
-  confirmText: 'Ok',
-});
+const props = defineProps<ConfirmDialogBoxProps>();
+const { t } = useAppI18n();
+const modalDescription = computed(() => props.description ?? t('confirm.description'));
+const cancelLabel = computed(() => props.cancelText ?? t('confirm.cancel'));
+const confirmLabel = computed(() => props.confirmText ?? t('confirm.ok'));
 defineEmits<{
   close: [value: boolean];
 }>();
 </script>
 
 <template>
-  <UModal :title="title" :ui="{ footer: 'justify-end' }" :description="description">
+  <UModal :title="props.title" :ui="{ footer: 'justify-end' }" :description="modalDescription">
     <template #body>
       <div class="whitespace-pre-wrap">
-        {{ message }}
+        {{ props.message }}
       </div>
     </template>
     <template #footer>
       <UButton
         class="min-w-30"
-        :label="cancelText"
+        :label="cancelLabel"
         variant="outline"
         color="neutral"
         icon="mdi:close"
@@ -34,7 +34,7 @@ defineEmits<{
       />
       <UButton
         class="min-w-30"
-        :label="confirmText"
+        :label="confirmLabel"
         icon="mdi:check"
         autofocus
         @click="$emit('close', true)"

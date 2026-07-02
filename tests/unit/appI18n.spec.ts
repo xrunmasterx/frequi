@@ -17,6 +17,19 @@ describe('resolveLocaleText', () => {
     expect(resolveLocaleText('nav.trades', 'bilingual')).toBe('Trades / 交易');
   });
 
+  it('resolves login and confirmation labels', () => {
+    expect(resolveLocaleText('login.botName', 'bilingual')).toBe('Bot Name / 机器人名称');
+    expect(resolveLocaleText('login.modalTitle', 'bilingual')).toBe(
+      'Login to your bot / 登录到你的机器人',
+    );
+    expect(resolveLocaleText('login.modalDescription', 'bilingual')).toBe(
+      'Enter your bot credentials to connect / 输入机器人凭据以连接',
+    );
+    expect(resolveLocaleText('login.submit', 'bilingual')).toBe('Submit / 提交');
+    expect(resolveLocaleText('confirm.cancel', 'bilingual')).toBe('Cancel / 取消');
+    expect(resolveLocaleText('confirm.ok', 'bilingual')).toBe('Ok / 确定');
+  });
+
   it('returns English text in English mode', () => {
     expect(resolveLocaleText('nav.trade', 'en')).toBe('Trade');
   });

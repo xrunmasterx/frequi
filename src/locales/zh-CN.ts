@@ -75,6 +75,8 @@ export const zhCN = {
   },
   login: {
     botName: '机器人名称',
+    modalTitle: '登录到你的机器人',
+    modalDescription: '输入机器人凭据以连接',
     apiUrl: 'API 地址',
     apiUrlRequired: '必须填写 API 地址。',
     duplicateUrl: '该地址已被另一个机器人使用。',

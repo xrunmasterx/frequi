@@ -75,6 +75,8 @@ export const en = {
   },
   login: {
     botName: 'Bot Name',
+    modalTitle: 'Login to your bot',
+    modalDescription: 'Enter your bot credentials to connect',
     apiUrl: 'API Url',
     apiUrlRequired: 'API URL is required.',
     duplicateUrl: 'This URL is already in use by another bot.',
