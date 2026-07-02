@@ -9,6 +9,14 @@ describe('resolveLocaleText', () => {
     expect(resolveLocaleText('nav.trade', 'bilingual')).toBe('Trade / 交易');
   });
 
+  it('resolves first-slice navigation labels', () => {
+    expect(resolveLocaleText('nav.dashboard', 'bilingual')).toBe('Dashboard / 仪表盘');
+    expect(resolveLocaleText('nav.chart', 'bilingual')).toBe('Chart / 图表');
+    expect(resolveLocaleText('nav.logs', 'bilingual')).toBe('Logs / 日志');
+    expect(resolveLocaleText('nav.settings', 'bilingual')).toBe('Settings / 设置');
+    expect(resolveLocaleText('nav.trades', 'bilingual')).toBe('Trades / 交易');
+  });
+
   it('returns English text in English mode', () => {
     expect(resolveLocaleText('nav.trade', 'en')).toBe('Trade');
   });
