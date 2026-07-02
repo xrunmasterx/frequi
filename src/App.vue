@@ -1,6 +1,11 @@
 <script setup lang="ts">
+import { en, zh_cn } from '@nuxt/ui/locale';
+
 const settingsStore = useSettingsStore();
 const colorStore = useColorStore();
+
+const uiLocale = computed(() => (settingsStore.localeMode === 'en' ? en : zh_cn));
+
 onMounted(() => {
   setTimezone(settingsStore.timezone);
   colorStore.updateProfitLossColor();
@@ -15,7 +20,7 @@ watch(
 </script>
 
 <template>
-  <UApp>
+  <UApp :locale="uiLocale">
     <div id="app" class="flex flex-col h-dvh" :style="colorStore.cssVars">
       <NavBar />
       <BodyLayout class="grow overflow-auto" />

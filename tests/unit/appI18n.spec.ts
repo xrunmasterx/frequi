@@ -35,6 +35,16 @@ describe('resolveLocaleText', () => {
   });
 });
 
+describe('settings locale labels', () => {
+  it('resolves the three locale display option labels', () => {
+    expect(resolveLocaleText('settings.languageBilingual', 'bilingual')).toBe(
+      'English / Chinese / 英文 / 中文',
+    );
+    expect(resolveLocaleText('settings.languageChinese', 'zh-CN')).toBe('简体中文');
+    expect(resolveLocaleText('settings.languageEnglish', 'en')).toBe('English');
+  });
+});
+
 describe('useAppI18n', () => {
   it('uses the persisted settings locale mode', () => {
     setActivePinia(createPinia());
