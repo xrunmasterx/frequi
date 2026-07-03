@@ -17,6 +17,8 @@ type CandleTooltipRow = {
 };
 
 export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
+  const { t } = useAppI18n();
+
   function formatTooltipValue(value: unknown): string {
     if (typeof value === 'number') {
       return value.toLocaleString(undefined, { maximumFractionDigits: 15 });
@@ -67,10 +69,10 @@ export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
         : 0;
 
     if (axisIndex === 0) {
-      return 'Candles';
+      return t('chart.legendCandles');
     }
     if (axisIndex === 1) {
-      return 'Volume';
+      return t('chart.legendVolume');
     }
     if (Array.isArray(chartOptions.value.yAxis)) {
       const axis = chartOptions.value.yAxis[axisIndex];
@@ -81,7 +83,7 @@ export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
         }
       }
     }
-    return 'Candles';
+    return t('chart.legendCandles');
   }
 
   /**
@@ -118,7 +120,10 @@ export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
         ? tooltipDimensions.map((dim) => seriesValues[Number(dim)])
         : seriesValues;
 
-      return [String(series.tooltip.valueFormatter(valueFormatterData, param.dataIndex))];
+      const formattedValue = String(
+        series.tooltip.valueFormatter(valueFormatterData, param.dataIndex),
+      );
+      return formattedValue.trim() ? [formattedValue] : [];
     }
 
     if (tooltipDimensions.length === 0) {
@@ -150,22 +155,22 @@ export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
     return [
       {
         marker: typeof param.marker === 'string' ? param.marker : '',
-        label: 'open',
+        label: t('chart.candleOpen'),
         value: formatTooltipValue(param.value[openIndex]),
       },
       {
         marker: typeof param.marker === 'string' ? param.marker : '',
-        label: 'highest',
+        label: t('chart.candleHighest'),
         value: formatTooltipValue(param.value[highIndex]),
       },
       {
         marker: typeof param.marker === 'string' ? param.marker : '',
-        label: 'lowest',
+        label: t('chart.candleLowest'),
         value: formatTooltipValue(param.value[lowIndex]),
       },
       {
         marker: typeof param.marker === 'string' ? param.marker : '',
-        label: 'close',
+        label: t('chart.candleClose'),
         value: formatTooltipValue(param.value[closeIndex]),
       },
     ];
@@ -183,7 +188,7 @@ export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
     const marker = typeof param.marker === 'string' ? param.marker : '';
     const label = param.seriesName ?? '';
     if (values.length === 0) {
-      return [{ label, marker }];
+      return [];
     }
     if (values.length === 1) {
       return [{ label, value: values[0], marker }];
@@ -239,7 +244,7 @@ export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
     const sections = Array.from(groupedLines.entries())
       .map(([title, lines], index) => {
         const titleHtml =
-          title === 'Volume'
+          title === t('chart.legendVolume')
             ? ''
             : `<div style="margin:${index === 0 ? '6px' : '8px'} 0 2px;font-weight:700; text-decoration:underline; text-align:left;"
             >${echartsFormat.encodeHTML(title)}</div>`;
