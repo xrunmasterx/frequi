@@ -87,19 +87,20 @@ const filteredTrades = computed(() => {
   );
 });
 
-function formatUsingOrderText(ordertype: 'limit' | 'market' | string): string {
-  if (ordertype === 'market') return t('trade.usingMarketOrder');
-  if (ordertype === 'limit') return t('trade.usingLimitOrder');
-  return formatLocaleText(t('trade.usingOrder'), { orderType: ordertype });
-}
-
 async function forceExitHandler(
   item: Trade,
   ordertype: 'limit' | 'market' | undefined = undefined,
 ) {
   const message = ordertype
-    ? `${t('trade.reallyExitTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair}) ${formatUsingOrderText(ordertype)}?`
-    : `${t('trade.reallyExitTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair})?`;
+    ? formatLocaleText(t('trade.confirmExitTradeUsingOrder'), {
+        tradeId: item.trade_id,
+        pair: item.pair,
+        orderType: ordertype,
+      })
+    : formatLocaleText(t('trade.confirmExitTrade'), {
+        tradeId: item.trade_id,
+        pair: item.pair,
+      });
   if (
     settingsStore.confirmDialog !== true ||
     (await confirm({
@@ -128,7 +129,10 @@ async function removeTradeHandler(item: Trade) {
     await confirm({
       title: t('trade.deleteTrade'),
       description: t('trade.actionCannotBeUndone'),
-      message: `${t('trade.reallyDeleteTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair})?`,
+      message: formatLocaleText(t('trade.confirmDeleteTrade'), {
+        tradeId: item.trade_id,
+        pair: item.pair,
+      }),
       confirmText: t('common.confirm'),
     })
   ) {
@@ -152,7 +156,10 @@ async function cancelOpenOrderHandler(item: Trade) {
     await confirm({
       title: t('trade.cancelOpenOrder'),
       description: t('trade.actionCannotBeUndone'),
-      message: `${t('trade.reallyCancelOpenOrder')} ${item.trade_id} (${t('common.pair')} ${item.pair})?`,
+      message: formatLocaleText(t('trade.confirmCancelOpenOrder'), {
+        tradeId: item.trade_id,
+        pair: item.pair,
+      }),
       confirmText: t('common.confirm'),
     })
   ) {
@@ -231,7 +238,7 @@ const rowSelection = computed({
         {{
           botStore.activeBot.botFeatures.futures && row.original.trading_mode !== 'spot'
             ? (row.original.trade_id ? '| ' : '') +
-              (row.original.is_short ? t('common.short') : t('common.long'))
+              (row.original.is_short ? 'short' : 'long')
             : ''
         }}
       </template>

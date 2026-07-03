@@ -38,11 +38,12 @@ const props = withDefaults(
   },
 );
 const settingsStore = useSettingsStore();
+const { t } = useAppI18n();
 
 const balanceChartOptions = computed((): EChartsOption => {
   return {
     title: {
-      text: 'Balance',
+      text: t('bot.balance'),
       show: props.showTitle,
     },
     center: ['50%', '50%'],

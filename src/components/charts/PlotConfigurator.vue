@@ -267,7 +267,7 @@ const markAreaZIndex = computed({
 <template>
   <div v-if="columns">
     <UFormField :label="t('plot.configName')" class="text-md">
-      <PlotConfigSelect allow-edit :editable-name="t('plot.editName')"></PlotConfigSelect>
+      <PlotConfigSelect allow-edit editable-name="plot configuration"></PlotConfigSelect>
     </UFormField>
     <USeparator class="my-2" />
     <BaseCheckbox v-model="showTagsInTooltips" class="mb-1">{{
@@ -289,7 +289,7 @@ const markAreaZIndex = computed({
         v-model="selSubPlot"
         :allow-edit="!isMainPlot"
         allow-add
-        :editable-name="t('plot.editName')"
+        editable-name="subplot"
         align-vertical
         @new="addSubplot"
         @delete="deleteSubplot"

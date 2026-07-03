@@ -22,6 +22,7 @@ const emit = defineEmits<{
   duplicate: [oldName: string, newName: string];
   rename: [oldName: string, newName: string];
 }>();
+const { t } = useAppI18n();
 
 enum EditState {
   None,
@@ -81,34 +82,38 @@ function saveNewName() {
       <template v-if="allowEdit && mode === EditState.None">
         <UButton
           color="neutral"
-          :title="`Edit this ${editableName}.`"
+          :title="formatLocaleText(t('common.editThis'), { item: editableName })"
           icon="mdi:pencil"
           @click="mode = EditState.Editing"
         />
         <UButton
           v-if="allowDuplicate"
           color="neutral"
-          :title="`Duplicate ${editableName}.`"
+          :title="formatLocaleText(t('common.duplicateThis'), { item: editableName })"
           icon="mdi:content-copy"
           @click="duplicate"
         />
         <UButton
           color="neutral"
-          :title="`Delete this ${editableName}.`"
+          :title="formatLocaleText(t('common.deleteThis'), { item: editableName })"
           icon="mdi:delete"
           @click="$emit('delete', modelValue)"
         />
       </template>
       <UButton
         v-if="allowAdd && mode === EditState.None"
-        :title="`Add new ${editableName}.`"
+        :title="formatLocaleText(t('common.addNew'), { item: editableName })"
         icon="mdi:plus-box-outline"
         variant="solid"
         @click="addNewClick"
       />
       <template v-if="mode !== EditState.None">
-        <UButton :title="`Add new ${editableName}`" icon="mdi:check" @click="saveNewName" />
-        <UButton title="Abort" color="neutral" icon="mdi:close" @click="abort" />
+        <UButton
+          :title="formatLocaleText(t('common.saveThis'), { item: editableName })"
+          icon="mdi:check"
+          @click="saveNewName"
+        />
+        <UButton :title="t('common.abort')" color="neutral" icon="mdi:close" @click="abort" />
       </template>
     </div>
   </form>

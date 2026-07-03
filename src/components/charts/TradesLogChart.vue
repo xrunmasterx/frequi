@@ -61,7 +61,7 @@ const chartData = computed(() => {
         trade.pair,
         trade.botName,
         timestampms(trade.close_timestamp),
-        trade.is_short === undefined || !trade.is_short ? t('common.long') : t('common.short'),
+        trade.is_short === undefined || !trade.is_short ? 'long' : 'short',
       ];
       res.push(entry);
     }

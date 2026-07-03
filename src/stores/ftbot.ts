@@ -81,6 +81,7 @@ export function createBotSubStore(botId: string, botName: string) {
   const { showAlert } = useAlertForBot(botName);
 
   const useBotStore = defineStore(botId, () => {
+    const { t } = useAppI18n();
     const isSelected = ref(true);
     const ping = ref('');
     const botStatusAvailable = ref(false);
@@ -973,7 +974,7 @@ export function createBotSubStore(botId: string, botName: string) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert('Error stopping bot.', 'error');
+        showAlert(t('trade.stopBotError'), 'error');
         return Promise.reject(error);
       }
     }
@@ -990,7 +991,7 @@ export function createBotSubStore(botId: string, botName: string) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert('Error calling stopbuy.', 'error');
+        showAlert(t('trade.stopBuyError'), 'error');
         return Promise.reject(error);
       }
     }
@@ -1002,13 +1003,17 @@ export function createBotSubStore(botId: string, botName: string) {
           {},
         );
         console.log(res.data);
-        showAlert(res.data.status);
+        showAlert(
+          !res.data.status || res.data.status === 'Config reloaded successfully.'
+            ? t('trade.configReloaded')
+            : res.data.status,
+        );
         return Promise.resolve(res);
       } catch (error) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert('Error reloading.', 'error');
+        showAlert(t('trade.reloadConfigError'), 'error');
         return Promise.reject(error);
       }
     }
@@ -1016,13 +1021,17 @@ export function createBotSubStore(botId: string, botName: string) {
     async function deleteTrade(tradeid: string) {
       try {
         const res = await api.delete<DeleteTradeResponse>(`/trades/${tradeid}`);
-        showAlert(res.data.result_msg ? res.data.result_msg : `Deleted Trade ${tradeid}`);
+        showAlert(
+          res.data.result_msg
+            ? res.data.result_msg
+            : formatLocaleText(t('trade.deleteTradeSuccess'), { tradeId: tradeid }),
+        );
         return Promise.resolve(res);
       } catch (error) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert(`Failed to delete trade ${tradeid}`, 'error');
+        showAlert(formatLocaleText(t('trade.deleteTradeError'), { tradeId: tradeid }), 'error');
         return Promise.reject(error);
       }
     }
@@ -1030,13 +1039,20 @@ export function createBotSubStore(botId: string, botName: string) {
     async function cancelOpenOrder(tradeid: string) {
       try {
         const res = await api.delete<DeleteTradeResponse>(`/trades/${tradeid}/open-order`);
-        showAlert(res.data.result_msg ? res.data.result_msg : `Canceled open order for ${tradeid}`);
+        showAlert(
+          res.data.result_msg
+            ? res.data.result_msg
+            : formatLocaleText(t('trade.cancelOpenOrderSuccess'), { tradeId: tradeid }),
+        );
         return Promise.resolve(res);
       } catch (error) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert(`Failed to cancel open order ${tradeid}`, 'error');
+        showAlert(
+          formatLocaleText(t('trade.cancelOpenOrderError'), { tradeId: tradeid }),
+          'error',
+        );
         return Promise.reject(error);
       }
     }
@@ -1049,7 +1065,7 @@ export function createBotSubStore(botId: string, botName: string) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert(`Failed to reload trade ${tradeid}`, 'error');
+        showAlert(formatLocaleText(t('trade.reloadTradeError'), { tradeId: tradeid }), 'error');
         return Promise.reject(error);
       }
     }
@@ -1064,7 +1080,7 @@ export function createBotSubStore(botId: string, botName: string) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert(`Failed to get custom data for trade ${tradeid}`, 'error');
+        showAlert(formatLocaleText(t('trade.getCustomDataError'), { tradeId: tradeid }), 'error');
         return Promise.reject(error);
       }
     }
@@ -1084,13 +1100,19 @@ export function createBotSubStore(botId: string, botName: string) {
           '/forcesell',
           payload,
         );
-        showAlert(`Exit order for ${payload.tradeid} created`, 'success');
+        showAlert(
+          formatLocaleText(t('trade.forceExitOrderCreated'), { tradeId: payload.tradeid }),
+          'success',
+        );
         return Promise.resolve(res);
       } catch (error) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert(`Failed to create exit order for ${payload.tradeid}`, 'error');
+        showAlert(
+          formatLocaleText(t('trade.forceExitOrderError'), { tradeId: payload.tradeid }),
+          'error',
+        );
         return Promise.reject(error);
       }
     }
@@ -1103,18 +1125,30 @@ export function createBotSubStore(botId: string, botName: string) {
             ForceEnterPayload,
             AxiosResponse<StatusResponse | TradeResponse>
           >('/forcebuy', payload);
-          showAlert(`Order for ${payload.pair} created.`, 'success');
+          showAlert(
+            formatLocaleText(t('trade.forceEntryOrderCreated'), { pair: payload.pair }),
+            'success',
+          );
           return Promise.resolve(res);
         } catch (error) {
           if (axios.isAxiosError(error)) {
             console.error(error.response);
-            showAlert(`Error occured entering: '${error.response?.data?.error}'`, 'error');
+            const backendError = error.response?.data?.error;
+            showAlert(
+              backendError
+                ? formatLocaleText(t('trade.forceEntryOrderErrorWithMessage'), {
+                    message: backendError,
+                  })
+                : t('trade.forceEntryOrderError'),
+              'error',
+            );
           }
           return Promise.reject(error);
         }
       }
-      const error = 'Pair is empty';
+      const error = t('trade.pairEmpty');
       console.error(error);
+      showAlert(error, 'error');
       return Promise.reject(error);
     }
 
@@ -1150,7 +1184,7 @@ export function createBotSubStore(botId: string, botName: string) {
           return Promise.reject(error);
         }
       }
-      const error = 'Pair is empty';
+      const error = t('trade.pairEmpty');
       console.error(error);
       return Promise.reject(error);
     }
@@ -1195,7 +1229,7 @@ export function createBotSubStore(botId: string, botName: string) {
           return Promise.reject(error);
         }
       }
-      const error = 'Pair is empty';
+      const error = t('trade.pairEmpty');
       console.error(error);
       return Promise.reject(error);
     }

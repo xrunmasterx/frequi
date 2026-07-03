@@ -104,7 +104,7 @@ test.describe('Trade', () => {
 
     const configReloadToast = page
       .getByRole('listitem')
-      .filter({ hasText: /Config reloaded successfully\./ });
+      .filter({ hasText: /Config reloaded successfully\.\s*\/\s*.+/ });
     await expect(configReloadToast).toBeVisible();
   });
   test('Trade page - drag and drop', async ({ page }) => {

@@ -30,12 +30,12 @@ const orderSide = ref<OrderSides>(OrderSides.long);
 const enterTag = ref('force_entry');
 
 const orderTypeOptions = computed(() => [
-  { value: 'market', text: t('common.market') },
-  { value: 'limit', text: t('common.limit') },
+  { value: 'market', text: 'market' },
+  { value: 'limit', text: 'limit' },
 ]);
 const orderSideOptions = computed(() => [
-  { value: 'long', text: t('common.long') },
-  { value: 'short', text: t('common.short') },
+  { value: 'long', text: 'long' },
+  { value: 'short', text: 'short' },
 ]);
 
 function checkFormValidity() {

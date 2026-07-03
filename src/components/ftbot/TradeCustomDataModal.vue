@@ -4,10 +4,14 @@ defineProps<TradeCustomDataProps>();
 defineEmits<{
   close: [value: boolean];
 }>();
+const { t } = useAppI18n();
 </script>
 
 <template>
-  <UModal :title="`Custom data for trade ${tradeId}`" description="">
+  <UModal
+    :title="formatLocaleText(t('trade.customDataForTrade'), { tradeId })"
+    description=""
+  >
     <template #body>
       <TradeCustomData :trade-id="tradeId" />
     </template>

@@ -9,7 +9,6 @@ const props = withDefaults(
   },
 );
 const plotStore = usePlotConfigStore();
-const { t } = useAppI18n();
 </script>
 
 <template>
@@ -18,7 +17,7 @@ const { t } = useAppI18n();
     :allow-edit="props.allowEdit"
     :allow-add="props.allowEdit"
     :allow-duplicate="props.allowEdit"
-    :editable-name="props.editableName ?? t('plot.editName')"
+    :editable-name="props.editableName ?? 'plot configuration'"
     @rename="plotStore.renamePlotConfig"
     @delete="plotStore.deletePlotConfig"
     @new="plotStore.newPlotConfig"

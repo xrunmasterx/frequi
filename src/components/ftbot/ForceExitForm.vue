@@ -64,8 +64,8 @@ const amountInBase = computed<string>(() => {
     : '';
 });
 const orderTypeOptions = computed(() => [
-  { value: 'market', text: t('common.market') },
-  { value: 'limit', text: t('common.limit') },
+  { value: 'market', text: 'market' },
+  { value: 'limit', text: 'limit' },
 ]);
 resetForm();
 </script>

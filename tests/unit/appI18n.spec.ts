@@ -190,6 +190,51 @@ describe('deep coverage locale labels', () => {
     expect(resolveLocaleText('trade.usingMarketOrder', 'bilingual')).not.toContain('Market /');
     expect(resolveLocaleText('trade.usingLimitOrder', 'bilingual')).not.toContain('Limit /');
   });
+
+  it('formats trade confirmation prompts as complete bilingual sentences', () => {
+    const exitPrompt = formatLocaleText(
+      resolveLocaleText('trade.confirmExitTrade', 'bilingual'),
+      {
+        tradeId: 42,
+        pair: 'BTC/USDT',
+      },
+    );
+    const exitWithOrderPrompt = formatLocaleText(
+      resolveLocaleText('trade.confirmExitTradeUsingOrder', 'bilingual'),
+      {
+        tradeId: 42,
+        pair: 'BTC/USDT',
+        orderType: 'market',
+      },
+    );
+
+    expect(exitPrompt.split(' / ')).toHaveLength(2);
+    expect(exitWithOrderPrompt.split(' / ')).toHaveLength(2);
+    expect(exitWithOrderPrompt).toContain('market');
+    expect(exitPrompt).not.toContain('Pair /');
+    expect(exitWithOrderPrompt).not.toContain('Pair /');
+    expect(exitWithOrderPrompt).not.toContain('Market /');
+    expect(exitWithOrderPrompt).not.toContain('Limit /');
+  });
+
+  it('resolves final bilingual UI and toast labels', () => {
+    expect(resolveLocaleText('common.editThis', 'en')).toBe('Edit this {item}.');
+    expect(resolveLocaleText('common.duplicateThis', 'en')).toBe('Duplicate this {item}.');
+    expect(resolveLocaleText('common.deleteThis', 'en')).toBe('Delete this {item}.');
+    expect(resolveLocaleText('common.addNew', 'en')).toBe('Add new {item}.');
+    expect(resolveLocaleText('common.saveThis', 'en')).toBe('Save this {item}.');
+    expect(resolveLocaleText('trade.customDataForTrade', 'en')).toBe(
+      'Custom data for trade {tradeId}',
+    );
+    expect(resolveLocaleText('trade.deleteTradeSuccess', 'en')).toBe(
+      'Deleted Trade {tradeId}',
+    );
+    expect(resolveLocaleText('trade.cancelOpenOrderError', 'en')).toBe(
+      'Failed to cancel open order {tradeId}',
+    );
+    expect(resolveLocaleText('common.supported', 'en')).toBe('Supported');
+    expect(resolveLocaleText('common.unsupported', 'en')).toBe('Unsupported');
+  });
 });
 
 describe('useAppI18n', () => {
