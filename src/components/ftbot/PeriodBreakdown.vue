@@ -3,6 +3,7 @@ import { TimeSummaryOptions } from '@/types';
 
 const botStore = useBotStore();
 const settingsStore = useSettingsStore();
+const { t } = useAppI18n();
 
 const props = defineProps<{
   multiBotView?: boolean;
@@ -13,17 +14,17 @@ const hasWeekly = computed(
 );
 
 const periodicBreakdownSelections = computed(() => {
-  const vals = [{ value: TimeSummaryOptions.daily, text: 'Days' }];
+  const vals = [{ value: TimeSummaryOptions.daily, text: t('bot.days') }];
   if (hasWeekly.value) {
-    vals.push({ value: TimeSummaryOptions.weekly, text: 'Weeks' });
-    vals.push({ value: TimeSummaryOptions.monthly, text: 'Months' });
+    vals.push({ value: TimeSummaryOptions.weekly, text: t('bot.weeks') });
+    vals.push({ value: TimeSummaryOptions.monthly, text: t('bot.months') });
   }
   return vals;
 });
 
-const absRelSelections = ref([
-  { value: 'abs_profit', text: 'Abs $' },
-  { value: 'rel_profit', text: 'Rel %' },
+const absRelSelections = computed(() => [
+  { value: 'abs_profit', text: t('bot.absDollar') },
+  { value: 'rel_profit', text: t('bot.relPercent') },
 ]);
 
 const selectedStats = computed(() => {
@@ -72,16 +73,18 @@ onMounted(() => {
 
 const tableColumns = computed(() => {
   const cols: { accessorKey: string; header: string }[] = [
-    { accessorKey: 'date', header: 'Day' },
-    { accessorKey: 'abs_profit', header: 'Profit' },
+    { accessorKey: 'date', header: t('bot.day') },
+    { accessorKey: 'abs_profit', header: t('bot.profit') },
     {
       accessorKey: 'fiat_value',
-      header: `In ${selectedStats.value.fiat_display_currency}`,
+      header: formatLocaleText(t('bot.inStakeCurrency'), {
+        currency: selectedStats.value.fiat_display_currency,
+      }),
     },
-    { accessorKey: 'trade_count', header: 'Trades' },
+    { accessorKey: 'trade_count', header: t('bot.trades') },
   ];
   if (botStore.activeBot.botFeatures.advancedDailyMetrics) {
-    cols.push({ accessorKey: 'rel_profit', header: 'Profit%' });
+    cols.push({ accessorKey: 'rel_profit', header: t('bot.profitPercent') });
   }
   return cols;
 });
@@ -97,7 +100,9 @@ watch(
 <template>
   <div class="flex flex-col h-full">
     <div v-if="!props.multiBotView" class="mb-2">
-      <h3 class="me-auto inline text-xl">{{ hasWeekly ? 'Period' : 'Daily' }} Breakdown</h3>
+      <h3 class="me-auto inline text-xl">{{
+        hasWeekly ? t('bot.periodBreakdown') : t('bot.dailyBreakdown')
+      }}</h3>
       <UButton class="float-end" color="neutral" icon="mdi:refresh" @click="refreshSummary" />
     </div>
     <div class="flex align-center justify-between">
@@ -136,7 +141,7 @@ watch(
       />
     </div>
     <div v-else class="flex items-center justify-center h-full w-full p-2">
-      Time period chart is only available when a single bot is selected and showing absolute profit.
+      {{ t('bot.timePeriodChartSingleBotAbsoluteProfit') }}
     </div>
     <div v-if="!props.multiBotView">
       <UTable

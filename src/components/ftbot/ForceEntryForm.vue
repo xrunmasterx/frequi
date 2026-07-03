@@ -147,7 +147,9 @@ resetForm();
 
         <UFormField
           :label="
-            t('trade.stakeAmountOptional').replace('{currency}', botStore.activeBot.stakeCurrency)
+            formatLocaleText(t('trade.stakeAmountOptional'), {
+              currency: botStore.activeBot.stakeCurrency,
+            })
           "
         >
           <UInputNumber

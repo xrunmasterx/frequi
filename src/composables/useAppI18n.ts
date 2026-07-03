@@ -46,6 +46,16 @@ export function resolveLocaleText(
   return zhText ? `${enText} / ${zhText}` : enText;
 }
 
+export function formatLocaleText(
+  template: string,
+  values: Record<string, string | number | boolean>,
+): string {
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+}
+
 export function useAppI18n() {
   const settingsStore = useSettingsStore();
 

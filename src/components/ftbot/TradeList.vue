@@ -98,7 +98,7 @@ async function forceExitHandler(
   ordertype: 'limit' | 'market' | undefined = undefined,
 ) {
   const message = ordertype
-    ? `${t('trade.reallyExitTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair}) ${t('trade.usingOrder').replace('{orderType}', formatOrderTypeLabel(ordertype))}?`
+    ? `${t('trade.reallyExitTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair}) ${formatLocaleText(t('trade.usingOrder'), { orderType: formatOrderTypeLabel(ordertype) })}?`
     : `${t('trade.reallyExitTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair})?`;
   if (
     settingsStore.confirmDialog !== true ||

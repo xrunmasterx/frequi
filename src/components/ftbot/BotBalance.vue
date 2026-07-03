@@ -3,6 +3,7 @@ import { h } from 'vue';
 import type { BalanceValues } from '@/types';
 
 const botStore = useBotStore();
+const { t } = useAppI18n();
 const hideSmallBalances = ref(true);
 const showBotOnly = ref(true);
 
@@ -61,15 +62,17 @@ const chartValues = computed<BalanceValues[]>(() => {
 
 const tableFields = computed(() => {
   return [
-    { field: 'currency', header: 'Currency' },
+    { field: 'currency', header: t('bot.currency') },
     {
       field: showBotOnly.value && canUseBotBalance.value ? 'bot_owned' : 'free',
-      header: 'Available',
+      header: t('bot.available'),
       asCurrency: true,
     },
     {
       field: showBotOnly.value && canUseBotBalance.value ? 'est_stake_bot' : 'est_stake',
-      header: `in ${botStore.activeBot.balance.stake}`,
+      header: formatLocaleText(t('bot.inStakeCurrency'), {
+        currency: botStore.activeBot.balance.stake,
+      }),
       asCurrency: true,
     },
   ];
@@ -89,16 +92,17 @@ const tableColumns = computed(() => {
       : undefined,
     footer:
       index === 0
-        ? 'Total'
+        ? t('common.total')
         : index === 1
           ? () =>
               h(
                 'span',
                 {
                   class: 'italic',
-                  title: `Increase over initial capital of ${formatCurrency(
-                    botStore.activeBot.balance.starting_capital,
-                  )} ${botStore.activeBot.balance.stake}`,
+                  title: formatLocaleText(t('bot.increaseOverInitialCapital'), {
+                    capital: formatCurrency(botStore.activeBot.balance.starting_capital),
+                    currency: botStore.activeBot.balance.stake,
+                  }),
                 },
                 formatPercent(botStore.activeBot.balance.starting_capital_ratio),
               )
@@ -121,18 +125,20 @@ onMounted(() => {
 <template>
   <div>
     <div class="flex flex-wrap flex-row mb-2 justify-end items-center">
-      <label class="text-xl ms-1 me-auto mb-0">{{ showBotOnly ? 'Bot' : 'Account' }} Balance</label>
+      <label class="text-xl ms-1 me-auto mb-0">{{
+        showBotOnly ? t('bot.botBalance') : t('bot.accountBalance')
+      }}</label>
       <div class="flex flex-row gap-1">
         <UButton
           v-if="canUseBotBalance"
           color="neutral"
-          :tooltip="!showBotOnly ? 'Showing Account balance' : 'Showing Bot balance'"
+          :tooltip="!showBotOnly ? t('bot.showingAccountBalance') : t('bot.showingBotBalance')"
           :icon="showBotOnly ? 'mdi:robot' : 'mdi:bank'"
           @click="showBotOnly = !showBotOnly"
         />
         <UButton
           color="neutral"
-          :tooltip="!hideSmallBalances ? 'Hide small balances' : 'Show all balances'"
+          :tooltip="!hideSmallBalances ? t('bot.hideSmallBalances') : t('bot.showAllBalances')"
           :icon="hideSmallBalances ? 'mdi:eye-off' : 'mdi:eye'"
           @click="hideSmallBalances = !hideSmallBalances"
         />

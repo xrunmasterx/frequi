@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
-import { resolveLocaleText, useAppI18n } from '@/composables/useAppI18n';
+import { formatLocaleText, resolveLocaleText, useAppI18n } from '@/composables/useAppI18n';
 import { useSettingsStore } from '@/stores/settings';
 
 describe('resolveLocaleText', () => {
@@ -107,6 +107,17 @@ describe('deep coverage locale labels', () => {
     );
     expect(resolveLocaleText('bot.performance', 'bilingual')).toBe('Performance / 表现');
     expect(resolveLocaleText('bot.balance', 'bilingual')).toBe('Balance / 余额');
+    expect(resolveLocaleText('trade.stake', 'en')).toBe('Stake');
+    expect(resolveLocaleText('bot.profitCurrency', 'bilingual')).toBe(
+      'Profit {currency} / {currency} 收益',
+    );
+    expect(formatLocaleText(resolveLocaleText('bot.profitCurrency', 'bilingual'), { currency: 'USDT' })).toBe(
+      'Profit USDT / USDT 收益',
+    );
+    expect(resolveLocaleText('bot.drawdownRange', 'bilingual')).toBe(
+      'from {start} to {end} / 从 {start} 到 {end}',
+    );
+    expect(resolveLocaleText('trade.feeInCurrency', 'zh-CN')).toBe('以 {currency} 计');
   });
 });
 

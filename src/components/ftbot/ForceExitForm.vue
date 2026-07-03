@@ -88,7 +88,7 @@ resetForm();
         </div>
 
         <UFormField
-          :label="t('trade.amountOptional').replace('{currency}', trade.base_currency || '')"
+          :label="formatLocaleText(t('trade.amountOptional'), { currency: trade.base_currency || '' })"
           :description="amountInBase"
         >
           <div class="space-y-2">
