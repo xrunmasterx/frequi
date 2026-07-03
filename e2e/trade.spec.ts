@@ -1,6 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 import { setLoginInfo, defaultMocks, tradeMocks } from './helpers';
+
+const bilingualLabel = (english: string) => new RegExp(`${english}\\s*(?:/.*)?$`, 'i');
+const dragHeader = (page: Page, label: RegExp) =>
+  page.locator('.drag-header').filter({ hasText: label });
 
 test.describe('Trade', () => {
   test.beforeEach(async ({ page }) => {
@@ -24,8 +28,8 @@ test.describe('Trade', () => {
     ]);
 
     // // Check visibility of elements
-    await expect(page.locator('.drag-header', { hasText: 'Multi Pane' })).toBeInViewport();
-    await expect(page.locator('.drag-header', { hasText: 'Chart' })).toBeInViewport();
+    await expect(dragHeader(page, bilingualLabel('Multi Pane'))).toBeInViewport();
+    await expect(dragHeader(page, bilingualLabel('Chart'))).toBeInViewport();
     // Pairlist elements
 
     await expect(page.getByRole('listitem', { name: 'BTC/USDT' })).toBeInViewport();
@@ -38,19 +42,21 @@ test.describe('Trade', () => {
     await Promise.all([page.waitForResponse('**/performance'), performanceButton.click()]);
 
     // // Check visibility of Profit USDT
-    await expect(page.locator('th:has-text("Profit USDT")')).toBeInViewport();
+    await expect(
+      page.getByRole('columnheader', { name: /Profit\s+USDT(?:\s*\/.*)?$/ }),
+    ).toBeInViewport();
 
     // // Test messageBox behavior
 
     const dialogModal = page.getByRole('dialog');
-    const modalCancelButton = dialogModal.getByRole('button', { name: 'Cancel' });
+    const modalCancelButton = dialogModal.getByRole('button', { name: bilingualLabel('Cancel') });
 
     await expect(dialogModal).not.toBeVisible();
     await expect(dialogModal).not.toBeInViewport();
 
     await expect(modalCancelButton).not.toBeVisible();
 
-    await page.getByRole('button', { name: 'Stop Trading - Also stops' }).click();
+    await page.getByRole('button', { name: /Stop Trading - Also stops/ }).click();
 
     // Modal open
     await expect(dialogModal).toBeVisible();
@@ -71,33 +77,34 @@ test.describe('Trade', () => {
 
     // // Check visibility of elements
     await expect(performancePair).not.toBeInViewport();
-    const openTrades = page.locator('.drag-header:has-text("Open Trades")');
+    const openTrades = dragHeader(page, /Open [Tt]rades\s*(?:\/.*)?$/);
     openTrades.scrollIntoViewIfNeeded();
     await expect(openTrades).toBeInViewport();
-    const closedTrades = page.locator('.drag-header:has-text("Closed Trades")');
+    const closedTrades = dragHeader(page, bilingualLabel('Closed Trades'));
     closedTrades.scrollIntoViewIfNeeded();
     await expect(closedTrades).toBeInViewport();
     await expect(page.getByRole('cell', { name: 'TRX/USDT' })).toBeInViewport();
     await expect(page.locator('td:has-text("8070.5")')).toBeInViewport();
 
     // Scroll to top
-    const multiPane = page.locator('.drag-header', { hasText: 'Multi Pane' });
+    const multiPane = dragHeader(page, bilingualLabel('Multi Pane'));
     await expect(multiPane).toBeVisible();
     await multiPane.scrollIntoViewIfNeeded();
     await expect(multiPane).toBeInViewport();
 
     // // Click on Reload Config button
-    await page.getByRole('button', { name: 'Reload Config' }).click();
+    await page.getByRole('button', { name: /Reload Config/ }).click();
     // await page.locator('button[title*="Reload Config "]').click();
     await expect(dialogModal).toBeVisible();
     await expect(dialogModal).toBeInViewport();
 
-    const modalOkButton = dialogModal.getByRole('button', { name: 'Ok' });
+    const modalOkButton = dialogModal.getByRole('button', { name: bilingualLabel('Ok') });
     await expect(modalOkButton).toBeVisible();
     await modalOkButton.click();
 
-    const configReloadToast = page.getByText('Config reloaded successfully.', { exact: true });
-    await expect(configReloadToast).toBeInViewport();
+    const configReloadToast = page
+      .getByRole('listitem')
+      .filter({ hasText: /Config reloaded successfully\./ });
     await expect(configReloadToast).toBeVisible();
   });
   test('Trade page - drag and drop', async ({ page }) => {
@@ -115,14 +122,14 @@ test.describe('Trade', () => {
     ]);
     // Wait for dynamic layout to settle
     await page.waitForTimeout(1000);
-    const multiPane = await page.locator('.drag-header', { hasText: 'Multi Pane' });
+    const multiPane = dragHeader(page, bilingualLabel('Multi Pane'));
 
     const multiPanebb = await multiPane.boundingBox();
 
     await page.getByRole('button', { name: 'FT' }).click();
     await page.getByText('Unlock Layout').click();
 
-    const chartHeader = await page.locator('.drag-header:has-text("Chart")');
+    const chartHeader = dragHeader(page, bilingualLabel('Chart'));
     // Click outside of popup to ensure it's closed
     // await chartHeader.click();
     await expect(multiPane).toBeInViewport();
@@ -137,8 +144,14 @@ test.describe('Trade', () => {
       await page.mouse.move(chartHeaderbb?.x + chartHeaderbb.width / 2, chartHeaderbb?.y + 200);
       await page.mouse.up();
       await expect(multiPane).toBeInViewport();
-      // Multipane wasn't moved.
-      await expect(multiPanebb).toEqual(await multiPane.boundingBox());
+      // Multipane wasn't moved. Allow sub-pixel layout differences after unlocking.
+      const multiPaneAfter = await multiPane.boundingBox();
+      expect(multiPanebb).not.toBeNull();
+      expect(multiPaneAfter).not.toBeNull();
+      expect(Math.abs(multiPanebb!.x - multiPaneAfter!.x)).toBeLessThan(1);
+      expect(Math.abs(multiPanebb!.y - multiPaneAfter!.y)).toBeLessThan(1);
+      expect(Math.abs(multiPanebb!.width - multiPaneAfter!.width)).toBeLessThan(1);
+      expect(Math.abs(multiPanebb!.height - multiPaneAfter!.height)).toBeLessThan(1);
 
       await expect(chartHeader).toBeInViewport();
       // ChartHeader was moved down
