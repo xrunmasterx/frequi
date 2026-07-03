@@ -77,6 +77,35 @@ describe('settings locale labels', () => {
   });
 });
 
+describe('deep coverage locale labels', () => {
+  it('resolves plot, chart, trade, dashboard, and bot labels', () => {
+    expect(resolveLocaleText('plot.configuratorTitle', 'bilingual')).toBe(
+      'Plot Configurator / 图表绘制配置',
+    );
+    expect(resolveLocaleText('plot.addIndicator', 'bilingual')).toBe('Add indicator / 添加指标');
+    expect(resolveLocaleText('chart.refreshChart', 'bilingual')).toBe('Refresh chart / 刷新图表');
+    expect(resolveLocaleText('chart.noDataAvailable', 'bilingual')).toBe(
+      'No data available / 暂无数据',
+    );
+    expect(resolveLocaleText('trade.openTrades', 'bilingual')).toBe('Open Trades / 未平仓交易');
+    expect(resolveLocaleText('trade.reloadConfig', 'bilingual')).toBe(
+      'Reload Config / 重新加载配置',
+    );
+    expect(resolveLocaleText('trade.forceExitTrade', 'bilingual')).toBe(
+      'Force exit trade / 强制退出交易',
+    );
+    expect(resolveLocaleText('trade.table.profitPercent', 'bilingual')).toBe('Profit % / 收益率 %');
+    expect(resolveLocaleText('dashboard.botComparison', 'bilingual')).toBe(
+      'Bot comparison / 机器人对比',
+    );
+    expect(resolveLocaleText('dashboard.cumulativeProfit', 'bilingual')).toBe(
+      'Cumulative Profit / 累计收益',
+    );
+    expect(resolveLocaleText('bot.performance', 'bilingual')).toBe('Performance / 表现');
+    expect(resolveLocaleText('bot.balance', 'bilingual')).toBe('Balance / 余额');
+  });
+});
+
 describe('useAppI18n', () => {
   it('uses the persisted settings locale mode', () => {
     setActivePinia(createPinia());
