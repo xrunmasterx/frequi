@@ -42,6 +42,7 @@ export interface ChartCandlesPayload {
   limit?: number;
   watch_indicators?: ChartIndicatorPayload;
   include_strategy_overlay?: boolean;
+  candle_mode?: 'closed' | 'live';
 }
 
 export interface PairHistoryPayload extends ExchangeSelectPayload {
@@ -142,6 +143,8 @@ export interface ChartCandlesResponse extends PairHistory {
   overlay?: ChartOverlayMeta | null;
   plot_config: PlotConfig;
   warnings: string[];
+  candle_mode: 'closed' | 'live';
+  last_candle_complete: boolean;
 }
 
 export type PairHistoryLocal<TData extends PairHistory = PairHistory> = Record<

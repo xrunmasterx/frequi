@@ -75,6 +75,7 @@ import type { AxiosResponse } from 'axios';
 import axios from 'axios';
 
 import { evaluateFeatures } from '@/utils/features';
+import { runDedupedChartRefresh } from '@/utils/tradeChartRefresh';
 
 export function createBotSubStore(botId: string, botName: string) {
   const loginInfo = useLoginInfo(botId);
@@ -358,6 +359,7 @@ export function createBotSubStore(botId: string, botName: string) {
     const candleDataStatus = shallowRef(LoadingStatus.not_loaded);
     const chartCandleData = shallowRef<PairHistoryLocal<ChartCandlesResponse>>({});
     const chartCandleDataStatus = shallowRef(LoadingStatus.not_loaded);
+    const chartCandleRequests = new Set<string>();
     const history = ref<PairHistoryLocal>({});
     const historyStatus = shallowRef(LoadingStatus.not_loaded);
 
@@ -404,26 +406,33 @@ export function createBotSubStore(botId: string, botName: string) {
 
     async function getChartCandles(payload: ChartCandlesPayload) {
       if (payload.pair && payload.timeframe) {
-        chartCandleDataStatus.value = LoadingStatus.loading;
-        try {
-          const { data } = await api.post<
-            ChartCandlesResponse,
-            AxiosResponse<ChartCandlesResponse>,
-            ChartCandlesPayload
-          >('/chart_candles', payload);
-          chartCandleData.value = {
-            ...chartCandleData.value,
-            [`${payload.pair}__${payload.timeframe}`]: {
-              pair: payload.pair,
-              timeframe: payload.timeframe,
-              data,
-            },
-          };
-          chartCandleDataStatus.value = LoadingStatus.success;
-        } catch (err) {
-          console.error(err);
-          chartCandleDataStatus.value = LoadingStatus.error;
-        }
+        const requestKey = [
+          payload.pair,
+          payload.timeframe,
+          payload.candle_mode ?? 'closed',
+        ].join('__');
+        await runDedupedChartRefresh(chartCandleRequests, requestKey, async () => {
+          chartCandleDataStatus.value = LoadingStatus.loading;
+          try {
+            const { data } = await api.post<
+              ChartCandlesResponse,
+              AxiosResponse<ChartCandlesResponse>,
+              ChartCandlesPayload
+            >('/chart_candles', payload);
+            chartCandleData.value = {
+              ...chartCandleData.value,
+              [`${payload.pair}__${payload.timeframe}`]: {
+                pair: payload.pair,
+                timeframe: payload.timeframe,
+                data,
+              },
+            };
+            chartCandleDataStatus.value = LoadingStatus.success;
+          } catch (err) {
+            console.error(err);
+            chartCandleDataStatus.value = LoadingStatus.error;
+          }
+        });
       } else {
         const error = 'pair or timeframe not specified';
         console.error(error);
@@ -1528,6 +1537,7 @@ export function createBotSubStore(botId: string, botName: string) {
                 pair,
                 timeframe: chartTimeframe,
                 include_strategy_overlay: tradeChartStore.useStrategyOverlay,
+                candle_mode: 'live',
               });
             } else {
               // Reload pair candles

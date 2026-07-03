@@ -141,4 +141,40 @@ describe('ChartsView live chart mode', () => {
     expect(getPairHistory).toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  it('falls back to pair candles when chart candles are disabled outside webserver mode', () => {
+    const { pinia, getPairCandles } = installBot({ webserverMode: false, chartCandles: false });
+
+    const wrapper = mount(ChartsView, {
+      global: {
+        plugins: [pinia],
+        stubs: {
+          UCard: { template: '<div><slot /></div>' },
+          UCollapsible: true,
+          BaseCheckbox: true,
+          StrategySelect: true,
+          TimeframeSelect: true,
+          TimeRangeSelect: true,
+          ExchangeSelect: true,
+          InfoBox: true,
+          USelect: true,
+          CandleChartContainer: {
+            name: 'CandleChartContainer',
+            emits: ['refreshData'],
+            template: '<div />',
+          },
+        },
+      },
+    });
+
+    const chart = wrapper.findComponent({ name: 'CandleChartContainer' });
+    chart.vm.$emit('refreshData', 'BTC/USDT:USDT', ['open', 'close']);
+
+    expect(getPairCandles).toHaveBeenCalledWith({
+      pair: 'BTC/USDT:USDT',
+      timeframe: '1h',
+      columns: ['open', 'close'],
+    });
+    expect(refresh).not.toHaveBeenCalled();
+  });
 });
