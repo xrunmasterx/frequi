@@ -90,6 +90,8 @@ const shortexitSignalColor = '#faba25';
 
 const candleChart = useTemplateRef<InstanceType<typeof ECharts>>('candleChart');
 const chartOptions = shallowRef<EChartsOption>({});
+const settingsStore = useSettingsStore();
+const { t } = useAppI18n();
 
 const strategy = computed(() => {
   return props.dataset ? props.dataset.strategy : '';
@@ -143,10 +145,34 @@ function addLegend(name: string, position: number | undefined = undefined) {
   }
 }
 
+function getInitialLegendLabels() {
+  return [
+    t('chart.legendCandles'),
+    t('chart.legendVolume'),
+    t('chart.legendEntry'),
+    t('chart.legendExit'),
+  ];
+}
+
+function resetLocalizedLegendLabels() {
+  if (
+    !chartOptions.value.legend ||
+    Array.isArray(chartOptions.value.legend) ||
+    !Array.isArray(chartOptions.value.legend.data)
+  )
+    return;
+
+  chartOptions.value.legend.data = getInitialLegendLabels();
+}
+
 function updateChart(initial = false) {
   if (!hasData.value) {
     return;
   }
+  const nameCandles = t('chart.legendCandles');
+  const nameVolume = t('chart.legendVolume');
+  const nameEntry = t('chart.legendEntry');
+  const nameExit = t('chart.legendExit');
   if (chartOptions.value?.title) {
     chartOptions.value.title[0].text = chartTitle.value;
   }
@@ -237,7 +263,7 @@ function updateChart(initial = false) {
 
     series: [
       {
-        name: 'Candles',
+        name: nameCandles,
         type: 'candlestick',
         barWidth: '80%',
         itemStyle: {
@@ -253,7 +279,7 @@ function updateChart(initial = false) {
         },
       },
       {
-        name: 'Volume',
+        name: nameVolume,
         type: 'bar',
         xAxisIndex: 1,
         yAxisIndex: 1,
@@ -320,7 +346,7 @@ function updateChart(initial = false) {
         scale: true,
         gridIndex: 1,
         splitNumber: 2,
-        name: 'volume',
+        name: nameVolume,
         nameLocation: 'middle',
         position: props.labelSide,
         nameGap: NAMEGAP,
@@ -345,39 +371,39 @@ function updateChart(initial = false) {
     const signalConfigs = [
       {
         colData: colEntryData,
-        name: 'Entry',
+        name: nameEntry,
         symbol: 'triangle',
         symbolSize: 10,
         color: buySignalColor,
-        tooltipPrefix: 'Long entry',
+        tooltipPrefix: t('chart.longEntries'),
         colTooltip: colEnterTag,
       },
       {
         colData: colExitData,
-        name: 'Exit',
+        name: nameExit,
         symbol: 'diamond',
         symbolSize: 8,
         color: sellSignalColor,
-        tooltipPrefix: 'Long exit',
+        tooltipPrefix: t('chart.longExit'),
         colTooltip: colExitTag,
       },
       {
         colData: colShortEntryData,
-        name: 'Entry',
+        name: nameEntry,
         symbol: 'triangle',
         symbolSize: 10,
         symbolRotate: 180,
         color: shortEntrySignalColor,
-        tooltipPrefix: 'Short entry',
+        tooltipPrefix: t('chart.shortEntries'),
         colTooltip: colEnterTag,
       },
       {
         colData: colShortExitData,
-        name: 'Exit',
+        name: nameExit,
         symbol: 'pin',
         symbolSize: 8,
         color: shortexitSignalColor,
-        tooltipPrefix: 'Short exit',
+        tooltipPrefix: t('chart.shortExits'),
         colTooltip: colExitTag,
       },
     ];
@@ -568,7 +594,7 @@ function updateChart(initial = false) {
     }
   }
 
-  const nameTrades = 'Trades';
+  const nameTrades = t('chart.legendTrades');
   // Insert trades into legend, after the default columns
   addLegend(nameTrades, 4);
   const tradesSeries: ScatterSeriesOption = generateTradeSeries(
@@ -606,7 +632,7 @@ function initializeChartOptions() {
     animation: false,
     legend: {
       // Initial legend, further entries are pushed to the below list
-      data: ['Candles', 'Volume', 'Entry', 'Exit'],
+      data: getInitialLegendLabels(),
       right: '1%',
       top: 0,
       type: 'scroll',
@@ -731,6 +757,14 @@ onMounted(() => {
 
 watch([() => props.useUTC, () => props.theme, () => props.plotConfig], () =>
   initializeChartOptions(),
+);
+
+watch(
+  () => settingsStore.localeMode,
+  () => {
+    resetLocalizedLegendLabels();
+    updateChart(false);
+  },
 );
 
 watch([() => props.dataset, () => props.heikinAshi, () => props.showMarkArea], () => updateChart());

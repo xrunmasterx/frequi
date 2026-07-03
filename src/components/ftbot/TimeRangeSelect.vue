@@ -11,6 +11,7 @@ const dateFromText = ref('');
 const dateToText = ref('');
 const popoverFromOpen = ref(false);
 const popoverToOpen = ref(false);
+const { t } = useAppI18n();
 
 function calendarDateToTimeRangeString(d: CalendarDate | null): string {
   if (!d) return '';
@@ -104,7 +105,7 @@ onMounted(() => {
 <template>
   <div>
     <div class="flex gap-2">
-      <UFormField label="Start Date">
+      <UFormField :label="t('chart.startDate')">
         <UInput id="dateFrom" v-model="dateFromText" placeholder="yyyy-mm-dd" class="flex-1">
           <template #trailing>
             <UButton
@@ -113,7 +114,7 @@ onMounted(() => {
               color="neutral"
               variant="ghost"
               size="xs"
-              title="Clear start date"
+              :title="t('chart.clearStartDate')"
               @click="dateFromText = ''"
             />
             <UPopover v-model:open="popoverFromOpen">
@@ -129,7 +130,7 @@ onMounted(() => {
           </template>
         </UInput>
       </UFormField>
-      <UFormField label="End Date">
+      <UFormField :label="t('chart.endDate')">
         <UInput id="dateTo" v-model="dateToText" placeholder="yyyy-mm-dd" class="flex-1">
           <template #trailing>
             <UButton
@@ -138,7 +139,7 @@ onMounted(() => {
               color="neutral"
               variant="ghost"
               size="xs"
-              title="Clear end date"
+              :title="t('chart.clearEndDate')"
               @click="dateToText = ''"
             />
             <UPopover v-model:open="popoverToOpen">
@@ -157,7 +158,7 @@ onMounted(() => {
     </div>
 
     <div class="mt-1 text-start">
-      Timerange: <b>{{ timeRange }}</b>
+      {{ t('chart.timerange') }}: <b>{{ timeRange }}</b>
     </div>
   </div>
 </template>

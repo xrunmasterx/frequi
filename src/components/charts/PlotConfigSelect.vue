@@ -1,24 +1,24 @@
 <script setup lang="ts">
-withDefaults(
+const props = withDefaults(
   defineProps<{
     allowEdit?: boolean;
     editableName?: string;
   }>(),
   {
     allowEdit: false,
-    editableName: 'plot configuration',
   },
 );
 const plotStore = usePlotConfigStore();
+const { t } = useAppI18n();
 </script>
 
 <template>
   <EditValue
     v-model="plotStore.plotConfigName"
-    :allow-edit="allowEdit"
-    :allow-add="allowEdit"
-    :allow-duplicate="allowEdit"
-    editable-name="plot configuration"
+    :allow-edit="props.allowEdit"
+    :allow-add="props.allowEdit"
+    :allow-duplicate="props.allowEdit"
+    :editable-name="props.editableName ?? t('plot.editName')"
     @rename="plotStore.renamePlotConfig"
     @delete="plotStore.deletePlotConfig"
     @new="plotStore.newPlotConfig"

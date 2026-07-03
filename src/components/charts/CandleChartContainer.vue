@@ -28,6 +28,7 @@ const emit = defineEmits<{
 const settingsStore = useSettingsStore();
 const botStore = useBotStore();
 const plotStore = usePlotConfigStore();
+const { t } = useAppI18n();
 
 const dataset = computed((): PairHistory | undefined => {
   const firstpair = botStore.activeBot.plotMultiPairs[0];
@@ -151,7 +152,7 @@ const singlePairSelection = computed({
             v-model="botStore.activeBot.plotMultiPairs"
             class="md:w-80 w-full"
             :items="availablePairs"
-            placeholder="Select pairs to plot"
+            :placeholder="t('chart.selectPairsToPlot')"
             virtualize
             size="md"
           />
@@ -165,7 +166,7 @@ const singlePairSelection = computed({
             @input="refresh"
           />
           <UButton
-            title="Refresh chart"
+            :title="t('chart.refreshChart')"
             color="neutral"
             :disabled="botStore.activeBot.plotMultiPairs.length === 0"
             icon="mdi:refresh"
@@ -173,21 +174,21 @@ const singlePairSelection = computed({
           />
         </div>
         <BaseCheckbox v-model="settingsStore.multiPairSelection">
-          <span class="text-nowrap">Multi pair</span>
+          <span class="text-nowrap">{{ t('chart.multiPair') }}</span>
         </BaseCheckbox>
         <div class="ms-auto flex flex-wrap items-center gap-2">
           <BaseCheckbox v-model="settingsStore.showMarkArea">
-            <span class="text-nowrap">Show Chart Areas</span>
+            <span class="text-nowrap">{{ t('chart.showChartAreas') }}</span>
           </BaseCheckbox>
           <BaseCheckbox v-model="settingsStore.useHeikinAshiCandles">
-            <span class="text-nowrap">Heikin Ashi</span>
+            <span class="text-nowrap">{{ t('chart.heikinAshi') }}</span>
           </BaseCheckbox>
 
           <div class="me-0 md:me-1 flex grow">
             <PlotConfigSelect class="grow min-w-40"></PlotConfigSelect>
 
             <UButton
-              title="Plot configurator"
+              :title="t('plot.configuratorTitle')"
               color="neutral"
               icon="mdi:cog"
               @click="showConfigurator"
@@ -217,14 +218,14 @@ const singlePairSelection = computed({
         </SingleCandleChartContainer>
       </div>
       <div v-else class="flex flex-col items-center justify-center h-full w-full">
-        <span class="text-2xl font-semibold">No pair selected</span>
+        <span class="text-2xl font-semibold">{{ t('chart.noPairSelected') }}</span>
       </div>
     </div>
     <DraggableModal
       v-model:open="showPlotConfigModal"
-      title="Plot Configurator"
+      :title="t('plot.configuratorTitle')"
       class="max-w-xl"
-      description="Configure chart plot indicators and subplots"
+      :description="t('plot.configuratorDescription')"
       :overlay="false"
       :modal="false"
       :dismissible="false"

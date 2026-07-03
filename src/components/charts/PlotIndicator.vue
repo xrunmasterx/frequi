@@ -12,6 +12,7 @@ defineProps<{
   columns: string[];
 }>();
 
+const { t } = useAppI18n();
 const selColor_ = ref(randomColor());
 const selColor = computed({
   get: () => selColor_.value,
@@ -91,7 +92,7 @@ watchDebounced(
 <template>
   <div>
     <div class="flex flex-col lg:flex-row justify-between mt-1 gap-1">
-      <UFormField label="Type" class="w-full">
+      <UFormField :label="t('plot.type')" class="w-full">
         <USelect
           id="plotTypeSelector"
           v-model="graphType"
@@ -100,7 +101,7 @@ watchDebounced(
         >
         </USelect>
       </UFormField>
-      <UFormField label="Color" class="w-full">
+      <UFormField :label="t('plot.color')" class="w-full">
         <UFieldGroup>
           <UPopover placement="bottom" :close-on-click="false">
             <UButton class="h-8 w-8" :style="{ backgroundColor: selColor }"></UButton>
@@ -118,9 +119,13 @@ watchDebounced(
       v-model="fillTo"
       :columns="columns"
       class="mt-1"
-      label="Area chart - Fill to (leave empty for line chart)"
+      :label="t('plot.fillTo')"
     />
-    <UFormField label="Scatter symbol size" class="w-full" v-if="graphType === ChartType.scatter">
+    <UFormField
+      :label="t('plot.scatterSymbolSize')"
+      class="w-full"
+      v-if="graphType === ChartType.scatter"
+    >
       <UInputNumber
         v-model="scatterSymbolSize"
         :min="0"

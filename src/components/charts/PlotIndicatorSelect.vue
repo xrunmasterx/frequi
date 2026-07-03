@@ -12,6 +12,8 @@ const emit = defineEmits<{
   indicatorSelected: [value: string];
 }>();
 
+const { t } = useAppI18n();
+
 function abort() {
   model.value = '';
   emit('indicatorSelected', model.value);
@@ -32,6 +34,12 @@ function abort() {
       >
       </USelectMenu>
     </UFormField>
-    <UButton title="Abort" class="ms-1 mt-auto" color="neutral" icon="mdi:close" @click="abort" />
+    <UButton
+      :title="t('common.abort')"
+      class="ms-1 mt-auto"
+      color="neutral"
+      icon="mdi:close"
+      @click="abort"
+    />
   </div>
 </template>
