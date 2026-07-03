@@ -278,6 +278,22 @@ describe('deep coverage locale labels', () => {
   });
 });
 
+describe('home locale labels', () => {
+  it('resolves homepage and bot list labels', () => {
+    expect(resolveLocaleText('home.availableBots', 'bilingual')).toBe('Available bots / 可用机器人');
+    expect(resolveLocaleText('home.addNewBot', 'bilingual')).toBe('Add new Bot / 添加新机器人');
+    expect(resolveLocaleText('home.welcomeTitle', 'bilingual')).toBe(
+      'Welcome to the FreqtradeUI / 欢迎使用 FreqtradeUI',
+    );
+    expect(resolveLocaleText('home.controlBotDescription', 'bilingual')).toBe(
+      'This page allows you to control your trading bot. / 你可以在此页面控制交易机器人。',
+    );
+    expect(resolveLocaleText('home.documentationLink', 'bilingual')).toBe(
+      'Freqtrade Documentation / Freqtrade 文档',
+    );
+  });
+});
+
 describe('useAppI18n', () => {
   it('uses the persisted settings locale mode', () => {
     setActivePinia(createPinia());

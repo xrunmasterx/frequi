@@ -66,4 +66,18 @@ test.describe('Bilingual i18n', () => {
       page.locator('.drag-header').filter({ hasText: bilingualLabel('Cumulative Profit') }),
     ).toBeVisible();
   });
+
+  test('shows bilingual home and bot list copy without translating bot names', async ({ page }) => {
+    await setLoginInfo(page);
+    await defaultMocks(page);
+
+    await page.goto('/');
+
+    await expect(page.getByRole('heading', { name: bilingualLabel('Available bots') })).toBeVisible();
+    await expect(page.getByRole('button', { name: bilingualLabel('Add new Bot') })).toBeVisible();
+    await expect(page.getByRole('heading', { name: bilingualLabel('Welcome to the FreqtradeUI') })).toBeVisible();
+    await expect(page.getByText(bilingualLabel('This page allows you to control your trading bot.'))).toBeVisible();
+    await expect(page.getByRole('link', { name: bilingualLabel('Freqtrade Documentation') })).toBeVisible();
+    await expect(page.getByText('TestBot', { exact: true })).toBeVisible();
+  });
 });

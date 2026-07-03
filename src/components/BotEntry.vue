@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BotDescriptor } from '@/types';
 const { confirm } = useConfirmBox();
+const { t } = useAppI18n();
 
 const props = defineProps<{
   bot: BotDescriptor;
@@ -17,11 +18,18 @@ function confirmRemoveBot() {
   botStore.removeBot(props.bot.botId);
 }
 
+function getBotDisplayName() {
+  return props.bot.botName || props.bot.botId;
+}
+
 async function removeBotQuestion() {
   if (
     await confirm({
-      title: 'Logout confirmation',
-      message: `Really remove (logout) from ${props.bot.botName} (${props.bot.botId})?`,
+      title: t('home.logoutConfirmation'),
+      message: formatLocaleText(t('home.removeBotConfirmation'), {
+        botName: getBotDisplayName(),
+        botId: props.bot.botId,
+      }),
     })
   ) {
     confirmRemoveBot();
@@ -52,18 +60,18 @@ const autoRefreshLoc = computed({
           v-if="!noRefreshSwitch"
           v-model="autoRefreshLoc"
           class="mr-2"
-          :title="`Auto refresh for ${bot.botName || bot.botId}`"
+          :title="formatLocaleText(t('home.autoRefreshFor'), { botName: bot.botName || bot.botId })"
         />
         <div
           v-if="selectedBotStore.isBotLoggedIn"
-          :title="selectedBotStore.isBotOnline ? 'Online' : 'Offline'"
+          :title="selectedBotStore.isBotOnline ? t('home.online') : t('home.offline')"
         >
           <i-mdi-circle
             class="mx-1"
             :class="selectedBotStore.isBotOnline ? 'text-green-500' : 'text-red-500'"
           />
         </div>
-        <div v-else title="Login info expired, please login again.">
+        <div v-else :title="t('home.loginInfoExpiredHint')">
           <i-mdi-cancel class="text-red-500 mx-1" />
         </div>
       </div>
@@ -73,7 +81,7 @@ const autoRefreshLoc = computed({
           v-if="!noButtons && selectedBotStore.isBotLoggedIn"
           color="neutral"
           variant="soft"
-          title="Edit bot"
+          :title="t('home.editBot')"
           @click="$emit('edit', bot.botId)"
           icon="mdi:pencil"
         />
@@ -81,7 +89,7 @@ const autoRefreshLoc = computed({
           v-if="!noRefreshSwitch && !selectedBotStore.isBotLoggedIn"
           variant="soft"
           color="neutral"
-          title="Login again"
+          :title="t('home.loginAgain')"
           @click="$emit('editLogin', bot.botId)"
           icon="mdi:login"
         />
@@ -89,7 +97,7 @@ const autoRefreshLoc = computed({
           v-if="!noButtons"
           variant="soft"
           color="neutral"
-          title="Delete bot"
+          :title="t('home.deleteBot')"
           @click="removeBotQuestion"
           icon="mdi:delete"
         />
