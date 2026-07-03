@@ -19,6 +19,8 @@ import type {
   BotDescriptor,
   BotFeatures,
   BotState,
+  ChartCandlesPayload,
+  ChartCandlesResponse,
   ClosedTrade,
   DeleteTradeResponse,
   DownloadDataPayload,
@@ -354,6 +356,8 @@ export function createBotSubStore(botId: string, botName: string) {
 
     const candleData = shallowRef<PairHistoryLocal>({});
     const candleDataStatus = shallowRef(LoadingStatus.not_loaded);
+    const chartCandleData = shallowRef<PairHistoryLocal<ChartCandlesResponse>>({});
+    const chartCandleDataStatus = shallowRef(LoadingStatus.not_loaded);
     const history = ref<PairHistoryLocal>({});
     const historyStatus = shallowRef(LoadingStatus.not_loaded);
 
@@ -390,6 +394,35 @@ export function createBotSubStore(botId: string, botName: string) {
         } catch (err) {
           console.error(err);
           candleDataStatus.value = LoadingStatus.error;
+        }
+      } else {
+        const error = 'pair or timeframe not specified';
+        console.error(error);
+        return Promise.reject(error);
+      }
+    }
+
+    async function getChartCandles(payload: ChartCandlesPayload) {
+      if (payload.pair && payload.timeframe) {
+        chartCandleDataStatus.value = LoadingStatus.loading;
+        try {
+          const { data } = await api.post<
+            ChartCandlesResponse,
+            AxiosResponse<ChartCandlesResponse>,
+            ChartCandlesPayload
+          >('/chart_candles', payload);
+          chartCandleData.value = {
+            ...chartCandleData.value,
+            [`${payload.pair}__${payload.timeframe}`]: {
+              pair: payload.pair,
+              timeframe: payload.timeframe,
+              data,
+            },
+          };
+          chartCandleDataStatus.value = LoadingStatus.success;
+        } catch (err) {
+          console.error(err);
+          chartCandleDataStatus.value = LoadingStatus.error;
         }
       } else {
         const error = 'pair or timeframe not specified';
@@ -1592,6 +1625,8 @@ export function createBotSubStore(botId: string, botName: string) {
       plotMultiPairs,
       candleData,
       candleDataStatus,
+      chartCandleData,
+      chartCandleDataStatus,
       history,
       historyStatus,
       historyTakesLonger,
@@ -1649,6 +1684,7 @@ export function createBotSubStore(botId: string, botName: string) {
       getLocks,
       deleteLock,
       getPairCandles,
+      getChartCandles,
       getPairHistory,
       getStrategyPlotConfig,
       getStrategyList,

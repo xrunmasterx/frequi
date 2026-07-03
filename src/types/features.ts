@@ -23,6 +23,7 @@ export type FeatureKey =
   | 'hasBotBalance'
   | 'hasAdvancedStats'
   | 'chartLiveData'
+  | 'chartCandles'
   | 'hasProfitAll'
   | 'backtestHistory'
   | 'backtestFreqAI'
@@ -63,6 +64,7 @@ export const FEATURES: Record<FeatureKey, FeatureConfig> = {
   hasBotBalance: { minVersion: 2.26, description: 'Provides bot balance' },
   hasAdvancedStats: { minVersion: 2.34, description: 'new entries/exits/mix_tags endpoints' },
   chartLiveData: { minVersion: 2.42, description: 'Live chart data support in webserver mode' },
+  chartCandles: { minVersion: 2.5, description: 'Trade chart indicator layer endpoint' },
   hasProfitAll: { minVersion: 2.43, description: 'Profit all endpoint' },
   // Backtesting
   backtestHistory: { minVersion: 2.15, description: 'Can Run Backtests' },

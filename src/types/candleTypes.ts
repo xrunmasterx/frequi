@@ -1,4 +1,5 @@
 import type { ExchangeSelectPayload } from './types';
+import type { PlotConfig } from './plot';
 
 export interface AvailablePairPayload {
   timeframe?: string;
@@ -21,6 +22,26 @@ export interface PairCandlePayload {
   timeframe: string;
   limit?: number;
   columns?: string[];
+}
+
+export interface ChartMacdIndicatorPayload {
+  fast: number;
+  slow: number;
+  signal: number;
+}
+
+export interface ChartIndicatorPayload {
+  ma?: number[];
+  rsi?: number[];
+  macd?: ChartMacdIndicatorPayload[];
+}
+
+export interface ChartCandlesPayload {
+  pair: string;
+  timeframe: string;
+  limit?: number;
+  watch_indicators?: ChartIndicatorPayload;
+  include_strategy_overlay?: boolean;
 }
 
 export interface PairHistoryPayload extends ExchangeSelectPayload {
@@ -107,11 +128,28 @@ export interface PairHistory {
   data_stop_ts: number;
 }
 
-export interface PairHistoryLocal {
-  [key: string]: {
+export interface ChartOverlayMeta {
+  strategy_timeframe: string;
+  alignment: 'direct' | 'forward_fill' | 'hidden' | 'unavailable';
+  columns: string[];
+  hidden: boolean;
+  warning?: string | null;
+}
+
+export interface ChartCandlesResponse extends PairHistory {
+  chart_timeframe: string;
+  strategy_timeframe?: string | null;
+  overlay?: ChartOverlayMeta | null;
+  plot_config: PlotConfig;
+  warnings: string[];
+}
+
+export type PairHistoryLocal<TData extends PairHistory = PairHistory> = Record<
+  string,
+  {
     pair: string;
     timeframe: string;
     timerange?: string;
-    data: PairHistory;
-  };
-}
+    data: TData;
+  }
+>;
