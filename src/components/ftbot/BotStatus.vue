@@ -10,12 +10,15 @@ const marketModeSummary = computed(() => {
     state.trading_mode !== 'spot' && state.margin_mode ? ` ${state.margin_mode}` : ''
   }`;
 
-  return formatLocaleText(t('bot.marketModeSummary'), {
+  const marketModeSummaryKey = state.demo_trading
+    ? 'bot.marketModeSummaryDemo'
+    : 'bot.marketModeSummary';
+
+  return formatLocaleText(t(marketModeSummaryKey), {
     maxOpenTrades: state.max_open_trades,
     stakeAmount: state.stake_amount,
     stakeCurrency: state.stake_currency,
     exchange: state.exchange,
-    demo: state.demo_trading ? ` (${t('bot.demo')})` : '',
     tradingMode,
     strategy: state.strategy,
   });

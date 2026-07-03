@@ -270,6 +270,8 @@ export const zhCN = {
     actionCannotBeUndone: '此操作无法撤销。',
     reallyExitTrade: '确认退出交易',
     usingOrder: '使用 {orderType} 订单',
+    usingMarketOrder: '使用市价订单',
+    usingLimitOrder: '使用限价订单',
     reallyDeleteTrade: '确认删除交易',
     reallyCancelOpenOrder: '确认取消此交易的未完成订单',
     actionsFor: '操作对象',
@@ -339,7 +341,9 @@ export const zhCN = {
     on: '在',
     marketsWithStrategy: '市场，使用策略',
     marketModeSummary:
-      '运行配置 {maxOpenTrades}x{stakeAmount} {stakeCurrency}，交易所 {exchange}{demo}，{tradingMode} 市场，使用策略 {strategy}。',
+      '运行配置 {maxOpenTrades}x{stakeAmount} {stakeCurrency}，交易所 {exchange}，{tradingMode} 市场，使用策略 {strategy}。',
+    marketModeSummaryDemo:
+      '运行配置 {maxOpenTrades}x{stakeAmount} {stakeCurrency}，交易所 {exchange}（模拟），{tradingMode} 市场，使用策略 {strategy}。',
     profitSummary:
       '平均收益 {avgProfit} (∑ {sumProfit})，共 {tradeCount} 笔交易，平均持仓时间 {avgDuration}。最佳交易对：{bestPair}。',
     demo: '模拟',

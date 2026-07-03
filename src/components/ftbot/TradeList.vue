@@ -87,10 +87,10 @@ const filteredTrades = computed(() => {
   );
 });
 
-function formatOrderTypeLabel(ordertype: 'limit' | 'market' | string): string {
-  if (ordertype === 'market') return t('common.market');
-  if (ordertype === 'limit') return t('common.limit');
-  return ordertype;
+function formatUsingOrderText(ordertype: 'limit' | 'market' | string): string {
+  if (ordertype === 'market') return t('trade.usingMarketOrder');
+  if (ordertype === 'limit') return t('trade.usingLimitOrder');
+  return formatLocaleText(t('trade.usingOrder'), { orderType: ordertype });
 }
 
 async function forceExitHandler(
@@ -98,7 +98,7 @@ async function forceExitHandler(
   ordertype: 'limit' | 'market' | undefined = undefined,
 ) {
   const message = ordertype
-    ? `${t('trade.reallyExitTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair}) ${formatLocaleText(t('trade.usingOrder'), { orderType: formatOrderTypeLabel(ordertype) })}?`
+    ? `${t('trade.reallyExitTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair}) ${formatUsingOrderText(ordertype)}?`
     : `${t('trade.reallyExitTrade')} ${item.trade_id} (${t('common.pair')} ${item.pair})?`;
   if (
     settingsStore.confirmDialog !== true ||

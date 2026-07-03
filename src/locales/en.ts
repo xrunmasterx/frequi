@@ -278,6 +278,8 @@ export const en = {
     actionCannotBeUndone: 'This action cannot be undone.',
     reallyExitTrade: 'Really exit trade',
     usingOrder: 'using a {orderType} order',
+    usingMarketOrder: 'using a Market order',
+    usingLimitOrder: 'using a Limit order',
     reallyDeleteTrade: 'Really delete trade',
     reallyCancelOpenOrder: 'Really cancel open order for trade',
     actionsFor: 'Actions for',
@@ -348,7 +350,9 @@ export const en = {
     on: 'on',
     marketsWithStrategy: 'markets, with Strategy',
     marketModeSummary:
-      'Running with {maxOpenTrades}x{stakeAmount} {stakeCurrency} on {exchange}{demo} in {tradingMode} markets, with Strategy {strategy}.',
+      'Running with {maxOpenTrades}x{stakeAmount} {stakeCurrency} on {exchange} in {tradingMode} markets, with Strategy {strategy}.',
+    marketModeSummaryDemo:
+      'Running with {maxOpenTrades}x{stakeAmount} {stakeCurrency} on {exchange} (Demo) in {tradingMode} markets, with Strategy {strategy}.',
     profitSummary:
       'Avg Profit {avgProfit} (∑ {sumProfit}) in {tradeCount} Trades, with an average duration of {avgDuration}. Best pair: {bestPair}.',
     demo: 'Demo',

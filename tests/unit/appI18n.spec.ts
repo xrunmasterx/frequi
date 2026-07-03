@@ -136,6 +136,30 @@ describe('deep coverage locale labels', () => {
     );
     expect(resolveLocaleText('trade.feeInCurrency', 'zh-CN')).toBe('以 {currency} 计');
   });
+
+  it('formats complete bilingual templates without nested localized placeholders', () => {
+    expect(
+      formatLocaleText(resolveLocaleText('bot.marketModeSummaryDemo', 'bilingual'), {
+        maxOpenTrades: 3,
+        stakeAmount: 100,
+        stakeCurrency: 'USDT',
+        exchange: 'Binance',
+        tradingMode: 'futures isolated',
+        strategy: 'SampleStrategy',
+      }),
+    ).toBe(
+      'Running with 3x100 USDT on Binance (Demo) in futures isolated markets, with Strategy SampleStrategy. / 运行配置 3x100 USDT，交易所 Binance（模拟），futures isolated 市场，使用策略 SampleStrategy。',
+    );
+
+    expect(resolveLocaleText('trade.usingMarketOrder', 'bilingual')).toBe(
+      'using a Market order / 使用市价订单',
+    );
+    expect(resolveLocaleText('trade.usingLimitOrder', 'bilingual')).toBe(
+      'using a Limit order / 使用限价订单',
+    );
+    expect(resolveLocaleText('trade.usingMarketOrder', 'bilingual')).not.toContain('Market /');
+    expect(resolveLocaleText('trade.usingLimitOrder', 'bilingual')).not.toContain('Limit /');
+  });
 });
 
 describe('useAppI18n', () => {
