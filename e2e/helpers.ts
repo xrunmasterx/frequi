@@ -46,6 +46,7 @@ export async function defaultMocks(page: Page) {
     { name: '@Ping', url: '**/api/v1/ping', fixture: 'ping.json' },
     { name: '@ShowConfig', url: '**/api/v1/show_config', fixture: 'show_config.json' },
     { name: '@PairCandles', url: '**/api/v1/pair_candles', fixture: 'pair_candles_btc_1m.json' },
+    { name: '@ChartCandles', url: '**/api/v1/chart_candles', fixture: 'chart_candles_btc_15m.json' },
     { name: '@Whitelist', url: '**/api/v1/whitelist', fixture: 'whitelist.json' },
     { name: '@Blacklist', url: '**/api/v1/blacklist', fixture: 'blacklist.json' },
   ];
@@ -57,6 +58,17 @@ export function tradeMocks(page: Page) {
   const mapping: MockArray[] = [
     { name: '@Status', url: '**/api/v1/status', fixture: 'status_empty.json' },
     { name: '@Profit', url: '**/api/v1/profit', fixture: 'profit.json' },
+    { name: '@ProfitAll', url: '**/api/v1/profit_all', fixture: 'profit_all.json' },
+    {
+      name: '@HistoricBalance',
+      url: '**/api/v1/historic_balance',
+      fixture: 'historic_balance.json',
+    },
+    {
+      name: '@StrategyNoAction',
+      url: '**/api/v1/strategy/NoActionStrategy',
+      fixture: 'strategy_noaction.json',
+    },
     { name: '@Trades', url: '**/api/v1/trades*', fixture: 'trades.json' },
     { name: '@Balance', url: '**/api/v1/balance', fixture: 'balance.json' },
     { name: '@Locks', url: '**/api/v1/locks', fixture: 'locks_empty.json' },
@@ -76,6 +88,10 @@ export function getWaitForResponse(page: Page, url: string) {
     '@Ping': '**/api/v1/ping',
     '@ShowConf': '**/api/v1/show_config',
     '@PairCandles': '**/api/v1/pair_candles',
+    '@ChartCandles': '**/api/v1/chart_candles',
+    '@ProfitAll': '**/api/v1/profit_all',
+    '@HistoricBalance': '**/api/v1/historic_balance',
+    '@StrategyNoAction': '**/api/v1/strategy/NoActionStrategy',
     '@Logs': '**/api/v1/logs',
   };
   const urlMap = urlMapping[url] ?? url;

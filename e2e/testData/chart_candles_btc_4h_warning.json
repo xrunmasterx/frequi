@@ -1,0 +1,53 @@
+{
+  "strategy": "NoActionStrategy",
+  "pair": "BTC/USDT",
+  "timeframe": "4h",
+  "timeframe_ms": 14400000,
+  "chart_timeframe": "4h",
+  "strategy_timeframe": "1h",
+  "columns": ["date", "open", "high", "low", "close", "volume", "watch_ma20", "watch_ma60", "watch_rsi14", "watch_macd", "watch_macdsignal", "watch_macdhist", "enter_long", "exit_long", "enter_short", "exit_short", "enter_tag", "exit_tag", "__date_ts", "_enter_long_signal_close", "_exit_long_signal_close", "_enter_short_signal_close", "_exit_short_signal_close"],
+  "all_columns": ["date", "open", "high", "low", "close", "volume", "watch_ma20", "watch_ma60", "watch_rsi14", "watch_macd", "watch_macdsignal", "watch_macdhist", "enter_long", "exit_long", "enter_short", "exit_short", "enter_tag", "exit_tag", "__date_ts", "_enter_long_signal_close", "_exit_long_signal_close", "_enter_short_signal_close", "_exit_short_signal_close"],
+  "data": [
+    ["2024-01-01 00:00:00", 42000.0, 42380.0, 41720.0, 42140.0, 116.3, 42010.0, 41820.0, 57.1, 21.0, 16.8, 4.2, 0, 0, 0, 0, "", "", 1704067200000, null, null, null, null],
+    ["2024-01-01 04:00:00", 42140.0, 42520.0, 41980.0, 42460.0, 132.7, 42110.0, 41890.0, 63.5, 36.5, 21.2, 15.3, 1, 0, 0, 0, "watch-cross", "", 1704081600000, 42460.0, null, null, null],
+    ["2024-01-01 08:00:00", 42460.0, 42510.0, 41840.0, 41930.0, 141.2, 42120.0, 41930.0, 45.9, 9.8, 18.4, -8.6, 0, 1, 0, 0, "", "volatility-exit", 1704096000000, null, 41930.0, null, null]
+  ],
+  "annotations": [],
+  "length": 3,
+  "buy_signals": 0,
+  "sell_signals": 0,
+  "enter_long_signals": 1,
+  "exit_long_signals": 1,
+  "enter_short_signals": 0,
+  "exit_short_signals": 0,
+  "last_analyzed": "2024-01-01 12:00:00",
+  "last_analyzed_ts": 1704110400000,
+  "data_start_ts": 1704067200000,
+  "data_start": "2024-01-01 00:00:00+00:00",
+  "data_stop": "2024-01-01 08:00:00+00:00",
+  "data_stop_ts": 1704096000000,
+  "plot_config": {
+    "main_plot": {
+      "watch_ma20": { "color": "#2563eb" },
+      "watch_ma60": { "color": "#f97316" }
+    },
+    "subplots": {
+      "Watch RSI 14": {
+        "watch_rsi14": { "color": "#9333ea" }
+      },
+      "Watch MACD": {
+        "watch_macd": { "color": "#0f766e" },
+        "watch_macdsignal": { "color": "#dc2626" },
+        "watch_macdhist": { "color": "#64748b", "type": "bar" }
+      }
+    }
+  },
+  "warnings": ["Strategy overlay hidden: chart timeframe is higher than strategy timeframe."],
+  "overlay": {
+    "strategy_timeframe": "1h",
+    "alignment": "hidden",
+    "columns": [],
+    "hidden": true,
+    "warning": "Strategy overlay hidden: chart timeframe is higher than strategy timeframe."
+  }
+}

@@ -1,10 +1,69 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Response } from '@playwright/test';
 
 import { setLoginInfo, defaultMocks, tradeMocks } from './helpers';
 
 const bilingualLabel = (english: string) => new RegExp(`${english}\\s*(?:/.*)?$`, 'i');
 const dragHeader = (page: Page, label: RegExp) =>
   page.locator('.drag-header').filter({ hasText: label });
+const chartCandlesUrl = '/api/v1/chart_candles';
+const overlayHiddenWarning =
+  'Strategy overlay hidden: chart timeframe is higher than strategy timeframe.';
+const chartStatusPattern =
+  /(?:Chart|图表):\s*15m\s*\|\s*(?:Strategy overlay|策略叠加):\s*NoActionStrategy\s+1h/i;
+const chartTimeframeTitlePattern = /^(?:Chart timeframe(?:\s*\/.*)?|看盘周期)$/;
+
+const chartCandlesResponse =
+  (timeframe?: string) =>
+  (response: Response): boolean => {
+    if (!response.url().includes(chartCandlesUrl) || response.request().method() !== 'POST') {
+      return false;
+    }
+
+    if (!timeframe) {
+      return true;
+    }
+
+    try {
+      const payload = response.request().postDataJSON() as { timeframe?: string };
+      return payload.timeframe === timeframe;
+    } catch {
+      return false;
+    }
+  };
+
+async function routeChartCandlesByTimeframe(page: Page) {
+  await page.route('**/api/v1/chart_candles', (route) => {
+    let timeframe = '';
+    try {
+      const payload = route.request().postDataJSON() as { timeframe?: string };
+      timeframe = payload.timeframe ?? '';
+    } catch {
+      timeframe = '';
+    }
+
+    const fixture =
+      timeframe === '4h' ? 'chart_candles_btc_4h_warning.json' : 'chart_candles_btc_15m.json';
+
+    return route.fulfill({ path: `./e2e/testData/${fixture}` });
+  });
+}
+
+async function selectTradeChartTimeframe(page: Page, timeframe: string) {
+  const trigger = page.getByTitle(chartTimeframeTitlePattern).first();
+  await expect(trigger).toBeVisible();
+
+  const tagName = await trigger.evaluate((element) => element.tagName.toLowerCase());
+  if (tagName === 'select') {
+    await trigger.selectOption(timeframe);
+    return;
+  }
+
+  await trigger.click();
+
+  const optionByRole = page.getByRole('option', { name: new RegExp(`^${timeframe}$`) }).first();
+  await expect(optionByRole).toBeVisible();
+  await optionByRole.click();
+}
 
 test.describe('Trade', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,7 +78,7 @@ test.describe('Trade', () => {
       // Wait for network requests
       //  page.waitForResponse('**/ping'),
       page.waitForResponse('**/status'),
-      page.waitForResponse('**/profit'),
+      page.waitForResponse('**/profit_all'),
       page.waitForResponse('**/balance'),
       //  page.waitForResponse('**/trades'),
       page.waitForResponse('**/whitelist'),
@@ -107,13 +166,38 @@ test.describe('Trade', () => {
       .filter({ hasText: /Config reloaded successfully\.\s*\/\s*.+/ });
     await expect(configReloadToast).toBeVisible();
   });
+  test('Trade page - chart candles overlay timeframe warning', async ({ page }) => {
+    await routeChartCandlesByTimeframe(page);
+
+    await Promise.all([
+      page.goto('/trade'),
+      page.waitForResponse('**/status'),
+      page.waitForResponse('**/profit_all'),
+      page.waitForResponse('**/balance'),
+      page.waitForResponse('**/whitelist'),
+      page.waitForResponse('**/blacklist'),
+      page.waitForResponse('**/locks'),
+      page.waitForResponse(chartCandlesResponse()),
+    ]);
+
+    await expect(dragHeader(page, bilingualLabel('Chart'))).toBeInViewport();
+    await expect(
+      page.locator('small[title]').filter({ hasText: chartStatusPattern }),
+    ).toBeVisible();
+
+    const chartCandles4h = page.waitForResponse(chartCandlesResponse('4h'));
+    await selectTradeChartTimeframe(page, '4h');
+    await chartCandles4h;
+
+    await expect(page.getByText(overlayHiddenWarning, { exact: true })).toBeVisible();
+  });
   test('Trade page - drag and drop', async ({ page }) => {
     await Promise.all([
       page.goto('/trade'),
       // Wait for network requests
       //  page.waitForResponse('**/ping'),
       page.waitForResponse('**/status'),
-      page.waitForResponse('**/profit'),
+      page.waitForResponse('**/profit_all'),
       page.waitForResponse('**/balance'),
       //  page.waitForResponse('**/trades'),
       page.waitForResponse('**/whitelist'),

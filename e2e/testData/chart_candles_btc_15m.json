@@ -1,0 +1,58 @@
+{
+  "strategy": "NoActionStrategy",
+  "pair": "BTC/USDT",
+  "timeframe": "15m",
+  "timeframe_ms": 900000,
+  "chart_timeframe": "15m",
+  "strategy_timeframe": "1h",
+  "columns": ["date", "open", "high", "low", "close", "volume", "watch_ma20", "watch_ma60", "watch_rsi14", "watch_macd", "watch_macdsignal", "watch_macdhist", "strategy_1h_atr", "strategy_1h_abs_close_change", "enter_long", "exit_long", "enter_short", "exit_short", "enter_tag", "exit_tag", "__date_ts", "_enter_long_signal_close", "_exit_long_signal_close", "_enter_short_signal_close", "_exit_short_signal_close"],
+  "all_columns": ["date", "open", "high", "low", "close", "volume", "watch_ma20", "watch_ma60", "watch_rsi14", "watch_macd", "watch_macdsignal", "watch_macdhist", "strategy_1h_atr", "strategy_1h_abs_close_change", "enter_long", "exit_long", "enter_short", "exit_short", "enter_tag", "exit_tag", "__date_ts", "_enter_long_signal_close", "_exit_long_signal_close", "_enter_short_signal_close", "_exit_short_signal_close"],
+  "data": [
+    ["2024-01-01 00:00:00", 42000.0, 42125.0, 41950.0, 42080.0, 18.4, 41990.0, 41780.0, 55.2, 18.2, 15.1, 3.1, 382.5, 80.0, 0, 0, 0, 0, "", "", 1704067200000, null, null, null, null],
+    ["2024-01-01 00:15:00", 42080.0, 42240.0, 42010.0, 42210.0, 21.8, 42020.0, 41805.0, 61.4, 25.7, 17.4, 8.3, 382.5, 210.0, 1, 0, 0, 0, "watch-cross", "", 1704068100000, 42210.0, null, null, null],
+    ["2024-01-01 00:30:00", 42210.0, 42250.0, 42040.0, 42090.0, 16.6, 42050.0, 41830.0, 52.9, 19.3, 17.8, 1.5, 382.5, 90.0, 0, 0, 0, 0, "", "", 1704069000000, null, null, null, null],
+    ["2024-01-01 00:45:00", 42090.0, 42110.0, 41910.0, 41980.0, 19.9, 42045.0, 41855.0, 47.6, 10.4, 16.2, -5.8, 382.5, -20.0, 0, 1, 0, 0, "", "volatility-exit", 1704069900000, null, 41980.0, null, null]
+  ],
+  "annotations": [],
+  "length": 4,
+  "buy_signals": 0,
+  "sell_signals": 0,
+  "enter_long_signals": 1,
+  "exit_long_signals": 1,
+  "enter_short_signals": 0,
+  "exit_short_signals": 0,
+  "last_analyzed": "2024-01-01 01:00:00",
+  "last_analyzed_ts": 1704070800000,
+  "data_start_ts": 1704067200000,
+  "data_start": "2024-01-01 00:00:00+00:00",
+  "data_stop": "2024-01-01 00:45:00+00:00",
+  "data_stop_ts": 1704069900000,
+  "plot_config": {
+    "main_plot": {
+      "watch_ma20": { "color": "#2563eb" },
+      "watch_ma60": { "color": "#f97316" }
+    },
+    "subplots": {
+      "Watch RSI 14": {
+        "watch_rsi14": { "color": "#9333ea" }
+      },
+      "Watch MACD": {
+        "watch_macd": { "color": "#0f766e" },
+        "watch_macdsignal": { "color": "#dc2626" },
+        "watch_macdhist": { "color": "#64748b", "type": "bar" }
+      },
+      "Strategy overlay 1h: Volatility system": {
+        "strategy_1h_atr": { "color": "#ca8a04" },
+        "strategy_1h_abs_close_change": { "color": "#0891b2", "type": "bar" }
+      }
+    }
+  },
+  "warnings": [],
+  "overlay": {
+    "strategy_timeframe": "1h",
+    "alignment": "forward_fill",
+    "columns": ["strategy_1h_atr", "strategy_1h_abs_close_change"],
+    "hidden": false,
+    "warning": null
+  }
+}

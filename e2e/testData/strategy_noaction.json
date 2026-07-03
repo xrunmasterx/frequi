@@ -1,0 +1,6 @@
+{
+  "strategy": "NoActionStrategy",
+  "timeframe": "1m",
+  "code": "class NoActionStrategy(IStrategy):\n    pass\n",
+  "params": []
+}
