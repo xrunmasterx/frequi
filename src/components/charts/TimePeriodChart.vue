@@ -45,11 +45,13 @@ const props = withDefaults(
   },
 );
 
-// Define Column labels here to avoid typos
+const { t } = useAppI18n();
 const CHART_PROFIT = computed(() =>
-  props.profitCol === 'abs_profit' ? 'Absolute profit' : 'Relative profit',
+  props.profitCol === 'abs_profit'
+    ? t('dashboard.chart.absoluteProfit')
+    : t('dashboard.chart.relativeProfit'),
 );
-const CHART_TRADE_COUNT = 'Trade Count';
+const CHART_TRADE_COUNT = computed(() => t('dashboard.chart.tradeCountTitle'));
 
 const settingsStore = useSettingsStore();
 const colorStore = useColorStore();
@@ -101,7 +103,7 @@ const colorStops: LinearGradientObject = {
 const dailyChartOptions: ComputedRef<EChartsOption> = computed(() => {
   return {
     title: {
-      text: 'Daily profit',
+      text: t('dashboard.chart.dailyProfitTitle'),
       show: props.showTitle,
     },
     backgroundColor: 'rgba(0, 0, 0, 0)',
@@ -147,11 +149,11 @@ const dailyChartOptions: ComputedRef<EChartsOption> = computed(() => {
           ${echartsFormat.encodeHTML(date)}<br/>
           <div style=">
             <div style="display: flex; justify-content: space-between;">
-              <span>${params[0].marker} Profit:</span> <span style="margin-left: 2em">
+              <span>${params[0].marker} ${echartsFormat.encodeHTML(t('dashboard.chart.profitLabel'))}</span> <span style="margin-left: 2em">
               <strong>${echartsFormat.encodeHTML(absProfit)} (${echartsFormat.encodeHTML(relProfit)})</strong></span>
             </div>
             <div style="display: flex; justify-content: space-between;">
-              <span>${params[1].marker} Trade count:</span>
+              <span>${params[1].marker} ${echartsFormat.encodeHTML(t('dashboard.chart.tradeCountLabel'))}</span>
               <span style="margin-left: 2em"><strong>${echartsFormat.encodeHTML(tradeCount)}</strong></span>
             </div>
           </div>
@@ -169,7 +171,7 @@ const dailyChartOptions: ComputedRef<EChartsOption> = computed(() => {
             color: colorStops,
           },
         },
-        { name: CHART_TRADE_COUNT },
+        { name: CHART_TRADE_COUNT.value },
       ],
       top: 0,
       right: '5%',
@@ -216,7 +218,7 @@ const dailyChartOptions: ComputedRef<EChartsOption> = computed(() => {
       },
       {
         type: 'value',
-        name: CHART_TRADE_COUNT,
+        name: CHART_TRADE_COUNT.value,
         nameRotate: 90,
         nameLocation: 'middle',
         nameGap: 30,
@@ -240,7 +242,7 @@ const dailyChartOptions: ComputedRef<EChartsOption> = computed(() => {
       },
       {
         type: 'bar',
-        name: CHART_TRADE_COUNT,
+        name: CHART_TRADE_COUNT.value,
         itemStyle: {
           color: 'rgba(150,150,150,0.3)',
         },

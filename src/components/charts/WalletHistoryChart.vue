@@ -35,8 +35,7 @@ use([
 ]);
 
 const colorStore = useColorStore();
-// Define Column labels here to avoid typos
-const CHART_WALLET_HISTORY = 'Wallet history';
+const { t } = useAppI18n();
 const SERIES_COLORS = ['#1d4ed8', '#d931e5', '#059669', '#b45309', '#be123c', '#7c3aed', '#0f766e'];
 
 const props = withDefaults(
@@ -125,13 +124,13 @@ const walletHistoryOptions: ComputedRef<EChartsOption> = computed(() => {
 
     const markLineData: MarkLineComponentOption['data'] = [
       {
-        name: 'Starting balance',
+        name: t('dashboard.chart.startingBalance'),
         yAxis: startingValue,
         emphasis: { disabled: true },
         label: {
           show: true,
           position: 'insideStartTop',
-          formatter: `Starting balance ${botName}`,
+          formatter: formatLocaleText(t('dashboard.chart.startingBalanceForBot'), { botName }),
           color: captureLineColor,
         },
       },
@@ -150,13 +149,13 @@ const walletHistoryOptions: ComputedRef<EChartsOption> = computed(() => {
 
     if (shouldShowCaptureLine) {
       markLineData.push({
-        name: 'Capture start',
+        name: t('dashboard.chart.captureStart'),
         xAxis: captureStartTs,
         emphasis: { disabled: true },
         label: {
           show: true,
           position: 'insideEndTop',
-          formatter: `Capture start ${botName}`,
+          formatter: formatLocaleText(t('dashboard.chart.captureStartForBot'), { botName }),
           color: captureLineColor,
         },
         lineStyle: {
@@ -238,7 +237,7 @@ const walletHistoryOptions: ComputedRef<EChartsOption> = computed(() => {
 
   const option: EChartsOption = {
     title: {
-      text: 'Wallet Balance',
+      text: t('dashboard.chart.walletBalanceTitle'),
       left: 'center',
       show: props.showTitle,
     },
@@ -300,7 +299,7 @@ const walletHistoryOptions: ComputedRef<EChartsOption> = computed(() => {
     yAxis: [
       {
         type: 'value',
-        name: CHART_WALLET_HISTORY,
+        name: t('dashboard.chart.walletHistoryAxis'),
         splitLine: {
           show: false,
         },
@@ -346,9 +345,9 @@ const walletHistoryOptions: ComputedRef<EChartsOption> = computed(() => {
     autoresize
   />
   <div v-else class="flex flex-col items-center justify-center h-full gap-2">
-    <p class="text-gray-500">No historic wallet data available.</p>
+    <p class="text-gray-500">{{ t('dashboard.chart.noHistoricWalletData') }}</p>
     <p class="text-gray-500 text-sm">
-      You may need to update your freqtrade version to have historic wallet balance data available.
+      {{ t('dashboard.chart.historicWalletVersionHint') }}
     </p>
   </div>
 </template>

@@ -33,9 +33,8 @@ use([
   VisualMapPiecewiseComponent,
 ]);
 
-// Define Column labels here to avoid typos
-const CHART_PROFIT = 'Profit %';
 const CHART_COLOR = '#9be0a8';
+const { t } = useAppI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -62,7 +61,7 @@ const chartData = computed(() => {
         trade.pair,
         trade.botName,
         timestampms(trade.close_timestamp),
-        trade.is_short === undefined || !trade.is_short ? 'Long' : 'Short',
+        trade.is_short === undefined || !trade.is_short ? t('common.long') : t('common.short'),
       ];
       res.push(entry);
     }
@@ -76,7 +75,7 @@ const chartOptions = computed((): EChartsOption => {
   const datazoomStart = chartData.value.length > 0 ? (1 - 50 / chartData.value.length) * 100 : 100;
   return {
     title: {
-      text: 'Trades log',
+      text: t('dashboard.chart.tradesLogTitle'),
       left: 'center',
       show: props.showTitle,
     },
@@ -93,7 +92,7 @@ const chartOptions = computed((): EChartsOption => {
         | ${echartsFormat.encodeHTML(params[0].data[5])} ${echartsFormat.encodeHTML(botName)}
         <br />
         ${echartsFormat.encodeHTML(params[0].data[4])}<br/>
-        Profit ${echartsFormat.encodeHTML(params[0].data[1])} %`;
+        ${echartsFormat.encodeHTML(t('dashboard.chart.profit'))} ${echartsFormat.encodeHTML(params[0].data[1])} %`;
       },
       axisPointer: {
         type: 'line',
@@ -109,7 +108,7 @@ const chartOptions = computed((): EChartsOption => {
     yAxis: [
       {
         type: 'value',
-        name: CHART_PROFIT,
+        name: t('dashboard.chart.profitPercent'),
         splitLine: {
           show: false,
         },
@@ -154,7 +153,7 @@ const chartOptions = computed((): EChartsOption => {
     series: [
       {
         type: 'bar',
-        name: CHART_PROFIT,
+        name: t('dashboard.chart.profitPercent'),
         barCategoryGap: '0%',
         animation: false,
         label: {

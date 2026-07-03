@@ -38,8 +38,7 @@ use([
   TooltipComponent,
 ]);
 
-// Define Column labels here to avoid typos
-const CHART_PROFIT = 'Profit';
+const { t } = useAppI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -169,7 +168,7 @@ function generateChart(initial = false) {
       },
       {
         type: 'line',
-        name: CHART_PROFIT,
+        name: t('dashboard.chart.profit'),
         animation: initial,
         step: 'end',
         lineStyle: {
@@ -210,7 +209,7 @@ const cumProfitChartOptions: ComputedRefWithControl<EChartsOption> = computedWit
   () => {
     const chartOptionsLoc: EChartsOption = {
       title: {
-        text: 'Cumulative Profit',
+        text: t('dashboard.chart.cumulativeProfitTitle'),
         left: 'center',
         show: props.showTitle,
       },
@@ -221,8 +220,8 @@ const cumProfitChartOptions: ComputedRefWithControl<EChartsOption> = computedWit
           const profit = params[0].data.profit;
           const currentProfit = params[0].data['currentProfit'];
           const profitText = currentProfit
-            ? `Projected profit (incl. unrealized): ${formatPrice(currentProfit, 3)}`
-            : `Profit: ${formatPrice(profit, 3)}`;
+            ? `${t('dashboard.chart.projectedProfitInclUnrealized')} ${formatPrice(currentProfit, 3)}`
+            : `${t('dashboard.chart.profitLabel')} ${formatPrice(profit, 3)}`;
           return `${echartsFormat.encodeHTML(timestampToDateString(params[1].data.date))}<br />${
             params[1].marker
           }${profitText}`;
@@ -235,7 +234,7 @@ const cumProfitChartOptions: ComputedRefWithControl<EChartsOption> = computedWit
         },
       },
       legend: {
-        data: [CHART_PROFIT],
+        data: [t('dashboard.chart.profit')],
         right: '5%',
         top: 0,
         selectedMode: false,
@@ -247,7 +246,7 @@ const cumProfitChartOptions: ComputedRefWithControl<EChartsOption> = computedWit
       yAxis: [
         {
           type: 'value',
-          name: CHART_PROFIT,
+          name: t('dashboard.chart.profit'),
           splitLine: {
             show: false,
           },
@@ -298,6 +297,12 @@ watchThrottled(
 );
 watch(
   () => settingsStore.chartTheme,
+  () => {
+    cumProfitChartOptions.trigger();
+  },
+);
+watch(
+  () => settingsStore.localeMode,
   () => {
     cumProfitChartOptions.trigger();
   },

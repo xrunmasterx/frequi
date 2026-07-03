@@ -137,6 +137,36 @@ describe('deep coverage locale labels', () => {
     expect(resolveLocaleText('trade.feeInCurrency', 'zh-CN')).toBe('以 {currency} 计');
   });
 
+  it('resolves dashboard chart internal labels', () => {
+    expect(resolveLocaleText('dashboard.chart.walletBalanceTitle', 'en')).toBe('Wallet Balance');
+    expect(resolveLocaleText('dashboard.chart.walletHistoryAxis', 'en')).toBe('Wallet history');
+    expect(resolveLocaleText('dashboard.chart.profitDistributionTitle', 'en')).toBe(
+      'Profit distribution',
+    );
+    expect(resolveLocaleText('dashboard.chart.tradeCount', 'en')).toBe('Trade count');
+    expect(resolveLocaleText('dashboard.chart.profitPercent', 'en')).toBe('Profit %');
+    expect(resolveLocaleText('dashboard.chart.tradesLogTitle', 'en')).toBe('Trades log');
+    expect(resolveLocaleText('dashboard.chart.dailyProfitTitle', 'en')).toBe('Daily profit');
+    expect(resolveLocaleText('dashboard.chart.absoluteProfit', 'en')).toBe('Absolute profit');
+    expect(resolveLocaleText('dashboard.chart.relativeProfit', 'en')).toBe('Relative profit');
+    expect(resolveLocaleText('dashboard.chart.cumulativeProfitTitle', 'en')).toBe(
+      'Cumulative Profit',
+    );
+  });
+
+  it('formats raw bot names in dashboard wallet chart mark labels', () => {
+    expect(
+      formatLocaleText(resolveLocaleText('dashboard.chart.startingBalanceForBot', 'en'), {
+        botName: 'AlphaBot',
+      }),
+    ).toBe('Starting balance AlphaBot');
+    expect(
+      formatLocaleText(resolveLocaleText('dashboard.chart.captureStartForBot', 'en'), {
+        botName: 'AlphaBot',
+      }),
+    ).toBe('Capture start AlphaBot');
+  });
+
   it('formats complete bilingual templates without nested localized placeholders', () => {
     expect(
       formatLocaleText(resolveLocaleText('bot.marketModeSummaryDemo', 'bilingual'), {

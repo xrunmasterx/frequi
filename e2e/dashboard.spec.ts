@@ -39,5 +39,6 @@ test.describe('Dashboard', () => {
     await expect(dragHeader(page, bilingualLabel('Profit Distribution'))).toBeInViewport();
 
     await expect(dragHeader(page, bilingualLabel('Trades Log'))).toBeInViewport();
+    await expect(page.getByText(bilingualLabel('Bins'))).toBeVisible();
   });
 });
