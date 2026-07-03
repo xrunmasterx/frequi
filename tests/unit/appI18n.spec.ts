@@ -105,6 +105,23 @@ describe('deep coverage locale labels', () => {
     expect(resolveLocaleText('dashboard.cumulativeProfit', 'bilingual')).toBe(
       'Cumulative Profit / 累计收益',
     );
+    expect(resolveLocaleText('dashboard.totalProfitOpenRealized', 'bilingual')).toBe(
+      'Total Profit (Open and realized) {percent} / 总收益（未平仓和已实现） {percent}',
+    );
+    expect(
+      formatLocaleText(resolveLocaleText('dashboard.totalProfitOpenRealized', 'bilingual'), {
+        percent: '1.23%',
+      }),
+    ).toBe('Total Profit (Open and realized) 1.23% / 总收益（未平仓和已实现） 1.23%');
+    expect(resolveLocaleText('dashboard.balanceAppendixDry', 'bilingual')).toBe(
+      '(dry) / （模拟）',
+    );
+    expect(resolveLocaleText('dashboard.balanceAppendixLive', 'bilingual')).toBe(
+      '(live) / （实盘）',
+    );
+    expect(resolveLocaleText('dashboard.balanceAppendixMixedDryAndLive', 'bilingual')).toBe(
+      '(mixed dry and live) / （模拟和实盘混合）',
+    );
     expect(resolveLocaleText('bot.performance', 'bilingual')).toBe('Performance / 表现');
     expect(resolveLocaleText('bot.balance', 'bilingual')).toBe('Balance / 余额');
     expect(resolveLocaleText('trade.stake', 'en')).toBe('Stake');

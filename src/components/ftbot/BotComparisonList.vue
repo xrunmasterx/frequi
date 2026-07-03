@@ -3,6 +3,7 @@ import type { ComparisonTableItems } from '@/types';
 import type { TableColumn } from '@nuxt/ui';
 
 const botStore = useBotStore();
+const { t } = useAppI18n();
 
 const allToggled = computed<boolean>({
   get: () => Object.values(botStore.botStores).every((i) => i.isSelected),
@@ -17,7 +18,7 @@ const tableItems = computed<ComparisonTableItems[]>(() => {
   const val: ComparisonTableItems[] = [];
   const summary: ComparisonTableItems = {
     botId: undefined,
-    botName: 'Summary',
+    botName: t('common.summary'),
     profitClosed: 0,
     profitClosedRatio: undefined,
     profitOpen: 0,
@@ -66,7 +67,7 @@ const tableItems = computed<ComparisonTableItems[]>(() => {
       stakeCurrencyDecimals: botStore.allBotState[k]?.stake_currency_decimals || 3,
       isDryRun: botStore.allBotState[k]?.dry_run,
       isOnline: botStore.botStores[k]?.isBotOnline,
-      balanceAppendix: botStore.allBotState[k]?.dry_run ? '(dry)' : '',
+      balanceAppendix: botStore.allBotState[k]?.dry_run ? t('dashboard.balanceAppendixDry') : '',
     });
     if (v?.profit_closed_coin !== undefined) {
       if (thisBotStore.isSelected) {
@@ -80,9 +81,11 @@ const tableItems = computed<ComparisonTableItems[]>(() => {
             botStore.allBalance[k]?.total_bot ?? botStore.allBalance[k]?.total ?? 0;
           summary.stakeCurrencyDecimals = botStore.allBotState[k]?.stake_currency_decimals || 3;
           if (botStore.allSelectedBotsSameState) {
-            summary.balanceAppendix = botStore.allBotState[k]?.dry_run ? '(dry)' : '(live)';
+            summary.balanceAppendix = botStore.allBotState[k]?.dry_run
+              ? t('dashboard.balanceAppendixDry')
+              : t('dashboard.balanceAppendixLive');
           } else {
-            summary.balanceAppendix = '(mixed dry and live)';
+            summary.balanceAppendix = t('dashboard.balanceAppendixMixedDryAndLive');
           }
         }
         // summary.decimals = this.allBotState[k]?.stake_currency_decimals || summary.decimals;
@@ -96,27 +99,27 @@ const tableItems = computed<ComparisonTableItems[]>(() => {
   return val;
 });
 
-const columns: TableColumn<ComparisonTableItems>[] = [
+const columns = computed<TableColumn<ComparisonTableItems>[]>(() => [
   { accessorKey: 'botName' },
-  { accessorKey: 'trades', header: 'Trades' },
-  { id: 'profitOpen', header: 'Open Profit' },
-  { id: 'profitClosed', header: 'Closed Profit' },
-  { accessorKey: 'balance', header: 'Balance' },
-  { id: 'winVsLoss', header: 'W/L' },
-];
+  { accessorKey: 'trades', header: t('bot.trades') },
+  { id: 'profitOpen', header: t('dashboard.openProfit') },
+  { id: 'profitClosed', header: t('dashboard.closedProfit') },
+  { accessorKey: 'balance', header: t('bot.balance') },
+  { id: 'winVsLoss', header: t('dashboard.winLossShort') },
+]);
 </script>
 
 <template>
   <UTable :data="tableItems" :columns="columns">
     <template #botName-header>
       <div class="flex justify-between flex-row w-full">
-        <b>Bot Name</b
+        <b>{{ t('dashboard.botName') }}</b
         ><UBadge
           class="items-center text-slate-200 bg-slate-800 cursor-pointer"
           color="neutral"
-          title="Click to select all bots"
+          :title="t('dashboard.clickSelectAllBots')"
           @click="botStore.toggleBotsByState('all')"
-          >All</UBadge
+          >{{ t('common.all') }}</UBadge
         >
       </div>
     </template>
@@ -129,13 +132,13 @@ const columns: TableColumn<ComparisonTableItems>[] = [
               botStore.botStores[(row.original as unknown as ComparisonTableItems).botId!]!
                 .isSelected
             "
-            title="Show this bot in Dashboard"
+            :title="t('dashboard.showThisBotInDashboard')"
             >{{ row.original.botName }}</BaseCheckbox
           >
           <BaseCheckbox
             v-if="!row.original.botId && botStore.botCount > 1"
             v-model="allToggled"
-            title="Toggle all bots"
+            :title="t('dashboard.toggleAllBots')"
             class="font-bold"
             >{{ row.original.botName }}</BaseCheckbox
           >
@@ -145,20 +148,20 @@ const columns: TableColumn<ComparisonTableItems>[] = [
           v-if="row.original.isOnline && row.original.isDryRun"
           class="items-center bg-green-800 text-slate-200 cursor-pointer"
           color="success"
-          title="Click to select all dry run bots"
+          :title="t('dashboard.clickSelectAllDryRunBots')"
           @click="botStore.toggleBotsByState('dry')"
-          >Dry</UBadge
+          >{{ t('dashboard.dry') }}</UBadge
         >
         <UBadge
           v-if="row.original.isOnline && !row.original.isDryRun"
           class="items-center cursor-pointer"
           color="warning"
-          title="Click to select all live bots"
+          :title="t('dashboard.clickSelectAllLiveBots')"
           @click="botStore.toggleBotsByState('live')"
-          >Live</UBadge
+          >{{ t('common.live') }}</UBadge
         >
         <UBadge v-if="row.original.isOnline === false" class="items-center" color="neutral"
-          >Offline</UBadge
+          >{{ t('common.offline') }}</UBadge
         >
       </div>
     </template>
@@ -167,9 +170,11 @@ const columns: TableColumn<ComparisonTableItems>[] = [
         v-if="row.original.profitOpen && row.original.botId !== 'Summary'"
         :profit-ratio="row.original.profitOpenRatio"
         :profit-abs="row.original.profitOpen"
-        :profit-desc="`Total Profit (Open and realized) ${formatPercent(
-          row.original.profitOpenRatio ?? 0.0,
-        )}`"
+        :profit-desc="
+          formatLocaleText(t('dashboard.totalProfitOpenRealized'), {
+            percent: formatPercent(row.original.profitOpenRatio ?? 0.0),
+          })
+        "
         :stake-currency="row.original.stakeCurrency"
       />
     </template>
