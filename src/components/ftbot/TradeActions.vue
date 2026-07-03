@@ -19,6 +19,7 @@ defineEmits<{
   deleteTrade: [trade: Trade];
   forceEntry: [trade: Trade];
 }>();
+const { t } = useAppI18n();
 </script>
 
 <template>
@@ -27,8 +28,8 @@ defineEmits<{
       v-if="!botFeatures.forceExitParams"
       class="justify-start!"
       color="neutral"
-      title="Forceexit"
-      label="Forceexit"
+      :title="t('trade.forceexit')"
+      :label="t('trade.forceexit')"
       icon="mdi:close-box"
       @click="$emit('forceExit', trade)"
     />
@@ -36,8 +37,8 @@ defineEmits<{
       v-if="botFeatures.forceExitParams"
       class="justify-start!"
       color="neutral"
-      title="Forceexit limit"
-      label="Forceexit limit"
+      :title="t('trade.forceexitLimit')"
+      :label="t('trade.forceexitLimit')"
       icon="mdi:close-box"
       @click="$emit('forceExit', trade, 'limit')"
     />
@@ -45,8 +46,8 @@ defineEmits<{
       v-if="botFeatures.forceExitParams"
       class="justify-start!"
       color="neutral"
-      title="Forceexit market"
-      label="Forceexit market"
+      :title="t('trade.forceexitMarket')"
+      :label="t('trade.forceexitMarket')"
       icon="mdi:close-box"
       @click="$emit('forceExit', trade, 'market')"
     />
@@ -54,8 +55,8 @@ defineEmits<{
       v-if="botFeatures.forceEntryTag"
       class="justify-start!"
       color="neutral"
-      title="Forceexit partial"
-      label="Forceexit partial"
+      :title="t('trade.forceexitPartial')"
+      :label="t('trade.forceexitPartial')"
       icon="mdi:close-box-multiple"
       @click="$emit('forceExitPartial', trade)"
     />
@@ -63,8 +64,8 @@ defineEmits<{
       v-if="botFeatures.cancelOpenOrders && (trade.open_order_id || trade.has_open_orders)"
       class="justify-start!"
       color="neutral"
-      title="Cancel open orders"
-      label="Cancel open orders"
+      :title="t('trade.cancelOpenOrders')"
+      :label="t('trade.cancelOpenOrders')"
       icon="mdi:cancel"
       @click="$emit('cancelOpenOrder', trade)"
     />
@@ -72,8 +73,8 @@ defineEmits<{
       v-if="enableForceEntry"
       class="justify-start!"
       color="neutral"
-      title="Increase position"
-      label="Increase position"
+      :title="t('trade.increasePosition')"
+      :label="t('trade.increasePosition')"
       icon="mdi:plus-box-multiple-outline"
       @click="$emit('forceEntry', trade)"
     />
@@ -81,16 +82,16 @@ defineEmits<{
       v-if="botFeatures.reloadTrade"
       class="justify-start!"
       color="neutral"
-      title="Reload"
-      label="Reload"
+      :title="t('trade.reload')"
+      :label="t('trade.reload')"
       icon="mdi:reload-alert"
       @click="$emit('reloadTrade', trade)"
     />
     <UButton
       class="justify-start!"
       color="neutral"
-      title="Delete trade"
-      label="Delete trade"
+      :title="t('trade.deleteTrade')"
+      :label="t('trade.deleteTrade')"
       icon="mdi:delete"
       @click="$emit('deleteTrade', trade)"
     />

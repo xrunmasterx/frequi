@@ -36,6 +36,10 @@ describe('resolveLocaleText', () => {
     expect(resolveLocaleText('login.submit', 'bilingual')).toBe('Submit / 提交');
     expect(resolveLocaleText('confirm.cancel', 'bilingual')).toBe('Cancel / 取消');
     expect(resolveLocaleText('confirm.ok', 'bilingual')).toBe('Ok / 确定');
+    expect(resolveLocaleText('common.limit', 'bilingual')).toBe('Limit / 限价');
+    expect(resolveLocaleText('trade.tradesEmpty', 'bilingual')).toBe(
+      'No Trades to show. / 没有可显示的交易。',
+    );
   });
 
   it('returns English text in English mode', () => {
