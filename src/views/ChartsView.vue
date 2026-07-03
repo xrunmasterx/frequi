@@ -6,7 +6,20 @@ const botStore = useBotStore();
 const chartStore = useChartConfigStore();
 const { t } = useAppI18n();
 
+const useLiveChart = computed(
+  () => !botStore.activeBot.isWebserverMode && botStore.activeBot.botFeatures.chartCandles,
+);
+
+const liveChart = useLiveChartDataset({
+  active: useLiveChart,
+  defaultTimeframe: computed(() => botStore.activeBot.timeframe),
+});
+
 const finalTimeframe = computed<string>(() => {
+  if (useLiveChart.value) {
+    return liveChart.timeframe.value;
+  }
+
   return botStore.activeBot.isWebserverMode
     ? chartStore.selectedTimeframe || botStore.activeBot.strategy?.timeframe || ''
     : botStore.activeBot.timeframe;
@@ -41,6 +54,11 @@ onMounted(() => {
 });
 
 function refreshOHLCV(pair: string, columns: string[]) {
+  if (useLiveChart.value) {
+    liveChart.refresh(pair);
+    return;
+  }
+
   console.log('Refreshing OHLCV for pair:', pair, finalTimeframe.value, 'with columns:', columns);
   if (botStore.activeBot.isWebserverMode && finalTimeframe.value) {
     const payload: PairHistoryPayload = {
@@ -166,8 +184,25 @@ watch(
         :trades="botStore.activeBot.allTrades"
         :timerange="botStore.activeBot.isWebserverMode ? chartStore.timerange : undefined"
         :strategy="botStore.activeBot.isWebserverMode ? chartStore.strategy : undefined"
+        :chart-data-source="useLiveChart ? liveChart.chartDataSource.value : undefined"
+        :chart-data-status="useLiveChart ? liveChart.chartDataStatus.value : undefined"
+        :plot-config-override="useLiveChart ? liveChart.plotConfig.value : undefined"
+        :chart-status-text="useLiveChart ? liveChart.statusText.value : undefined"
+        :chart-warning-text="useLiveChart ? liveChart.warningText.value : undefined"
         @refresh-data="refreshOHLCV"
       >
+        <template #timeframe-select>
+          <div v-if="useLiveChart" class="flex items-center gap-1">
+            <span class="text-sm text-nowrap">{{ t('trade.chartTimeframe') }}</span>
+            <USelect
+              v-model="liveChart.timeframe.value"
+              :title="t('trade.chartTimeframe')"
+              :items="liveChart.timeframeOptions.value"
+              size="sm"
+              class="w-24"
+            />
+          </div>
+        </template>
       </CandleChartContainer>
     </div>
   </div>
