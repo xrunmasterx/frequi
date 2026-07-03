@@ -283,6 +283,8 @@ export const zhCN = {
     tradesEmpty: '没有可显示的交易。',
     tradeDetail: '交易详情',
     chart: '图表',
+    chartTimeframe: '看盘周期',
+    chartStatus: '图表: {chartTimeframe} | 策略叠加: {strategy} {strategyTimeframe}',
     startTrading: '开始交易',
     stopTrading: '停止交易 - 同时停止处理未平仓交易。',
     pauseTrading: '暂停（StopBuy）- Freqtrade 将继续处理未平仓交易，但不会进入新交易或增加仓位。',

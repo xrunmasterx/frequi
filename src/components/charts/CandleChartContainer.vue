@@ -88,25 +88,19 @@ onMounted(() => {
 });
 
 function refresh() {
-  if (props.chartDataSource) {
-    return;
-  }
-
+  const columns = props.chartDataSource ? [] : plotStore.usedColumns;
   for (const pair of botStore.activeBot.plotMultiPairs) {
-    emit('refreshData', pair, plotStore.usedColumns);
+    emit('refreshData', pair, columns);
   }
 }
 
 function refreshIfNecessary(newValue: string[], oldValue: string[] | undefined) {
-  if (props.chartDataSource) {
-    return;
-  }
-
+  const columns = props.chartDataSource ? [] : plotStore.usedColumns;
   for (const pair of newValue) {
     if (oldValue?.includes(pair)) {
       continue;
     }
-    emit('refreshData', pair, plotStore.usedColumns);
+    emit('refreshData', pair, columns);
   }
 }
 
@@ -125,7 +119,10 @@ watch(
       botStore.activeBot.plotMultiPairs.some((p) => !props.availablePairs.includes(p))
     ) {
       assignFirstPair();
-      refresh();
+
+      if (props.historicView && !props.reloadDataOnSwitch) {
+        refresh();
+      }
     }
   },
 );
@@ -203,9 +200,11 @@ const singlePairSelection = computed({
           <slot name="timeframe-select" />
           <small
             v-if="chartStatusText"
-            class="text-sm text-nowrap text-neutral-600 dark:text-neutral-400"
-            >{{ chartStatusText }}</small
+            class="min-w-0 max-w-full truncate text-sm text-neutral-600 dark:text-neutral-400"
+            :title="chartStatusText"
           >
+            {{ chartStatusText }}
+          </small>
         </div>
         <BaseCheckbox v-model="settingsStore.multiPairSelection">
           <span class="text-nowrap">{{ t('chart.multiPair') }}</span>

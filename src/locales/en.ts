@@ -268,6 +268,8 @@ export const en = {
     tradesEmpty: 'No Trades to show.',
     tradeDetail: 'Trade Detail',
     chart: 'Chart',
+    chartTimeframe: 'Chart timeframe',
+    chartStatus: 'Chart: {chartTimeframe} | Strategy overlay: {strategy} {strategyTimeframe}',
     startTrading: 'Start Trading',
     stopTrading: 'Stop Trading - Also stops handling open trades.',
     pauseTrading:

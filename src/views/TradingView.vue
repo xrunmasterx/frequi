@@ -5,8 +5,28 @@ import type { TabsItem } from '@nuxt/ui';
 const botStore = useBotStore();
 const layoutStore = useLayoutStore();
 const settingsStore = useSettingsStore();
+const tradeChartStore = useTradeChartStore();
 const { t } = useAppI18n();
 const currentBreakpoint = ref('');
+const tradeChartTimeframeBaseOptions = [
+  '1m',
+  '3m',
+  '5m',
+  '15m',
+  '30m',
+  '1h',
+  '2h',
+  '4h',
+  '6h',
+  '8h',
+  '12h',
+  '1d',
+  '3d',
+  '1w',
+  '2w',
+  '1M',
+  '1y',
+];
 
 const breakpointChanged = (newBreakpoint: string) => {
   // console.log('breakpoint:', newBreakpoint);
@@ -51,13 +71,103 @@ const responsiveGridLayouts = computed(() => {
   };
 });
 
-function refreshOHLCV(pair: string, columns: string[]) {
+const tradeChartTimeframe = computed({
+  get() {
+    return tradeChartStore.selectedTimeframe || botStore.activeBot.timeframe;
+  },
+  set(value: string) {
+    tradeChartStore.selectedTimeframe = value;
+  },
+});
+
+const useChartCandles = computed(() => botStore.activeBot.botFeatures.chartCandles);
+
+const tradeChartTimeframeOptions = computed(() => {
+  const nonCanonicalTimeframes = [tradeChartTimeframe.value, botStore.activeBot.timeframe].filter(
+    (timeframe): timeframe is string =>
+      !!timeframe && !tradeChartTimeframeBaseOptions.includes(timeframe),
+  );
+
+  return [...new Set([...nonCanonicalTimeframes, ...tradeChartTimeframeBaseOptions])];
+});
+
+const tradeChartDataset = computed(() => {
+  const [pair] = botStore.activeBot.plotMultiPairs;
+  if (!pair) {
+    return undefined;
+  }
+  return botStore.activeBot.chartCandleData[`${pair}__${tradeChartTimeframe.value}`]?.data;
+});
+
+const tradeChartPlotConfig = computed(() => tradeChartDataset.value?.plot_config);
+
+const tradeChartWarningText = computed(() => tradeChartDataset.value?.warnings?.join(' ') ?? '');
+
+const tradeChartStatusText = computed(() => {
+  if (!useChartCandles.value) {
+    return '';
+  }
+
+  const dataset = tradeChartDataset.value;
+  const chartTimeframe = dataset?.chart_timeframe || tradeChartTimeframe.value;
+  const strategyName = dataset?.strategy || botStore.activeBot.botState.strategy || '';
+  const strategyTimeframe =
+    dataset?.strategy_timeframe || dataset?.overlay?.strategy_timeframe || '';
+  const strategyOverlay = [strategyName, strategyTimeframe].filter(Boolean).join(' ');
+
+  if (!strategyOverlay) {
+    return chartTimeframe;
+  }
+
+  return formatLocaleText(t('trade.chartStatus'), {
+    chartTimeframe,
+    strategy: strategyOverlay,
+    strategyTimeframe: '',
+  }).trim();
+});
+
+function refreshOHLCV(pair: string, columns: string[] = []) {
+  if (botStore.activeBot.botFeatures.chartCandles) {
+    const timeframe = tradeChartTimeframe.value;
+    if (!pair || !timeframe) {
+      return;
+    }
+
+    botStore.activeBot.getChartCandles({
+      pair,
+      timeframe,
+      include_strategy_overlay: tradeChartStore.useStrategyOverlay,
+    });
+    return;
+  }
+
   botStore.activeBot.getPairCandles({
-    pair: pair,
+    pair,
     timeframe: botStore.activeBot.timeframe,
-    columns: columns,
+    columns,
   });
 }
+
+watch(
+  () => botStore.selectedBot,
+  () => {
+    tradeChartStore.resetForBot(botStore.activeBot.timeframe);
+  },
+  { immediate: true },
+);
+
+watch(
+  () => tradeChartTimeframe.value,
+  () => {
+    if (!botStore.activeBot.botFeatures.chartCandles) {
+      return;
+    }
+
+    for (const pair of botStore.activeBot.plotMultiPairs) {
+      refreshOHLCV(pair);
+    }
+  },
+);
 
 const tradingTabItems = computed<TabsItem[]>(() => {
   const showText = settingsStore.multiPaneButtonsShowText;
@@ -245,10 +355,29 @@ const tradingTabItems = computed<TabsItem[]>(() => {
           <CandleChartContainer
             :available-pairs="botStore.activeBot.whitelist"
             :historic-view="!!false"
-            :timeframe="botStore.activeBot.timeframe"
+            :timeframe="tradeChartTimeframe"
             :trades="botStore.activeBot.allTrades"
+            :chart-data-source="useChartCandles ? botStore.activeBot.chartCandleData : undefined"
+            :chart-data-status="
+              useChartCandles ? botStore.activeBot.chartCandleDataStatus : undefined
+            "
+            :plot-config-override="useChartCandles ? tradeChartPlotConfig : undefined"
+            :chart-status-text="useChartCandles ? tradeChartStatusText : undefined"
+            :chart-warning-text="useChartCandles ? tradeChartWarningText : undefined"
             @refresh-data="refreshOHLCV"
           >
+            <template #timeframe-select>
+              <div v-if="useChartCandles" class="flex items-center gap-1">
+                <span class="text-sm text-nowrap">{{ t('trade.chartTimeframe') }}</span>
+                <USelect
+                  v-model="tradeChartTimeframe"
+                  :title="t('trade.chartTimeframe')"
+                  :items="tradeChartTimeframeOptions"
+                  size="sm"
+                  class="w-24"
+                />
+              </div>
+            </template>
           </CandleChartContainer>
         </DraggableContainer>
       </GridItem>
