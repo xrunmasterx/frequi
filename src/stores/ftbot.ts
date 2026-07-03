@@ -1516,9 +1516,24 @@ export function createBotSubStore(botId: string, botName: string) {
           const [pair, timeframeValue] = msg.data;
           // TODO: check for active bot ...
           if (plotMultiPairs.value.length > 0 && plotMultiPairs.value.includes(pair)) {
-            // Reload pair candles
-            const plotStore = usePlotConfigStore();
-            getPairCandles({ pair, timeframe: timeframeValue, columns: plotStore.usedColumns });
+            const tradeChartStore = useTradeChartStore();
+            const chartTimeframe = tradeChartStore.selectedTimeframe || timeframe.value;
+            if (
+              tradeChartStore.isTradeChartActive &&
+              tradeChartStore.activeBotId === botId &&
+              botFeatures.value.chartCandles &&
+              chartTimeframe
+            ) {
+              getChartCandles({
+                pair,
+                timeframe: chartTimeframe,
+                include_strategy_overlay: tradeChartStore.useStrategyOverlay,
+              });
+            } else {
+              // Reload pair candles
+              const plotStore = usePlotConfigStore();
+              getPairCandles({ pair, timeframe: timeframeValue, columns: plotStore.usedColumns });
+            }
           }
           break;
         }

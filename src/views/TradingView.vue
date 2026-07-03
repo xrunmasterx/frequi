@@ -152,9 +152,18 @@ watch(
   () => botStore.selectedBot,
   () => {
     tradeChartStore.resetForBot(botStore.activeBot.timeframe);
+    tradeChartStore.activeBotId = botStore.selectedBot;
+    tradeChartStore.isTradeChartActive = true;
   },
   { immediate: true },
 );
+
+onUnmounted(() => {
+  if (tradeChartStore.activeBotId === botStore.selectedBot) {
+    tradeChartStore.activeBotId = '';
+    tradeChartStore.isTradeChartActive = false;
+  }
+});
 
 watch(
   () => tradeChartTimeframe.value,

@@ -1,6 +1,8 @@
 export const useTradeChartStore = defineStore('tradeChart', () => {
   const selectedTimeframe = ref('');
   const useStrategyOverlay = ref(true);
+  const isTradeChartActive = ref(false);
+  const activeBotId = ref('');
 
   function resetForBot(botTimeframe: string) {
     selectedTimeframe.value = botTimeframe || '';
@@ -10,6 +12,8 @@ export const useTradeChartStore = defineStore('tradeChart', () => {
   return {
     selectedTimeframe,
     useStrategyOverlay,
+    isTradeChartActive,
+    activeBotId,
     resetForBot,
   };
 });

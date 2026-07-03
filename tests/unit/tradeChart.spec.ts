@@ -13,6 +13,8 @@ describe('useTradeChartStore', () => {
 
     expect(store.selectedTimeframe).toBe('');
     expect(store.useStrategyOverlay).toBe(true);
+    expect(store.isTradeChartActive).toBe(false);
+    expect(store.activeBotId).toBe('');
   });
 
   it("resets the selected timeframe to the bot's timeframe", () => {
