@@ -336,14 +336,14 @@ export function createBotSubStore(botId: string, botName: string) {
     async function deleteLock(lockid: string) {
       try {
         const res = await api.delete<LockResponse>(`/locks/${lockid}`);
-        showAlert(`Deleted Lock ${lockid}.`);
+        showAlert(formatLocaleText(t('bot.deleteLockSuccess'), { lockId: lockid }));
         currentLocks.value = res.data;
         return Promise.resolve(res);
       } catch (error) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert(`Failed to delete lock ${lockid}`, 'error');
+        showAlert(formatLocaleText(t('bot.deleteLockError'), { lockId: lockid }), 'error');
         return Promise.reject(error);
       }
     }
@@ -438,8 +438,8 @@ export function createBotSubStore(botId: string, botName: string) {
             console.error(err.response);
             const isTimeout = err.code === 'ECONNABORTED' || err.message?.includes('timeout');
             const errMsg = isTimeout
-              ? 'Timeout exceeded'
-              : (err.response?.data?.detail ?? 'Error fetching history');
+              ? t('bot.historyTimeout')
+              : (err.response?.data?.detail ?? t('bot.historyFetchError'));
             showAlert(errMsg, 'error');
           }
           return Promise.reject(err);
@@ -502,7 +502,7 @@ export function createBotSubStore(botId: string, botName: string) {
         console.error(error);
         if (axios.isAxiosError(error)) {
           console.error(error.response);
-          const errMsg = error.response?.data?.detail ?? 'Error fetching history';
+          const errMsg = error.response?.data?.detail ?? t('bot.historyFetchError');
           showAlert(errMsg, 'warning');
         }
         return Promise.reject(error);
@@ -834,7 +834,7 @@ export function createBotSubStore(botId: string, botName: string) {
           } catch (error) {
             window.clearInterval(interval);
             bgJobPolls.delete(jobId);
-            showAlert('Failed to get background job status', 'error');
+            showAlert(t('bot.backgroundJobStatusError'), 'error');
             reject(error);
           }
         }, 1000);
@@ -866,10 +866,10 @@ export function createBotSubStore(botId: string, botName: string) {
           for (const job of data) {
             backgroundJobs.value[job.job_id] = job;
           }
-          showAlert('All non-running background jobs cleared', 'success');
+          showAlert(t('bot.backgroundJobsCleared'), 'success');
         } catch (error) {
           console.error(error);
-          showAlert('Failed to clear background jobs', 'error');
+          showAlert(t('bot.backgroundJobsClearError'), 'error');
         }
         return;
       }
@@ -957,7 +957,7 @@ export function createBotSubStore(botId: string, botName: string) {
         if (axios.isAxiosError(error)) {
           console.error(error.response);
         }
-        showAlert('Error starting bot.', 'error');
+        showAlert(t('bot.startBotError'), 'error');
         return Promise.reject(error);
       }
     }
@@ -1148,7 +1148,6 @@ export function createBotSubStore(botId: string, botName: string) {
       }
       const error = t('trade.pairEmpty');
       console.error(error);
-      showAlert(error, 'error');
       return Promise.reject(error);
     }
 
@@ -1165,19 +1164,28 @@ export function createBotSubStore(botId: string, botName: string) {
             const { errors } = result.data;
             Object.keys(errors).forEach((pair) => {
               showAlert(
-                `Error while adding pair ${pair} to Blacklist: ${errors[pair]?.error_msg}`,
+                formatLocaleText(t('bot.addBlacklistPairError'), {
+                  pair,
+                  message: errors[pair]?.error_msg ?? '',
+                }),
                 'error',
               );
             });
           } else {
-            showAlert(`Pair ${payload.blacklist} added.`);
+            showAlert(
+              formatLocaleText(t('bot.addBlacklistSuccess'), {
+                pairs: String(payload.blacklist),
+              }),
+            );
           }
           return Promise.resolve(result.data);
         } catch (error) {
           if (axios.isAxiosError(error)) {
             console.error(error.response);
             showAlert(
-              `Error occured while adding pairs to Blacklist: '${error.response?.data?.error}'`,
+              formatLocaleText(t('bot.addBlacklistError'), {
+                message: error.response?.data?.error ?? '',
+              }),
               'error',
             );
           }
@@ -1210,19 +1218,28 @@ export function createBotSubStore(botId: string, botName: string) {
             const { errors } = result.data;
             Object.keys(errors).forEach((pair) => {
               showAlert(
-                `Error while removing pair ${pair} from Blacklist: ${errors[pair]?.error_msg}`,
+                formatLocaleText(t('bot.removeBlacklistPairError'), {
+                  pair,
+                  message: errors[pair]?.error_msg ?? '',
+                }),
                 'error',
               );
             });
           } else {
-            showAlert(`Pair ${blacklistPairs} removed.`);
+            showAlert(
+              formatLocaleText(t('bot.removeBlacklistSuccess'), {
+                pairs: String(blacklistPairs),
+              }),
+            );
           }
           return Promise.resolve(result.data);
         } catch (error) {
           if (axios.isAxiosError(error)) {
             console.error(error.response);
             showAlert(
-              `Error occured while removing pairs from Blacklist: '${error.response?.data?.error}'`,
+              formatLocaleText(t('bot.removeBlacklistError'), {
+                message: error.response?.data?.error ?? '',
+              }),
               'error',
             );
           }
@@ -1282,7 +1299,10 @@ export function createBotSubStore(botId: string, botName: string) {
         updateBacktestResult(data.backtest_result);
       }
       if (data.status === 'error') {
-        showAlert(`Backtest failed: ${data.status_msg}.`, 'error');
+        showAlert(
+          formatLocaleText(t('bot.backtestFailed'), { message: data.status_msg ?? '' }),
+          'error',
+        );
       }
     }
 
@@ -1448,7 +1468,7 @@ export function createBotSubStore(botId: string, botName: string) {
       const msg: FTWsMessage = JSON.parse(event.data);
       switch (msg.type) {
         case FtWsMessageTypes.exception:
-          showAlert(`WSException: ${msg.data}`, 'error');
+          showAlert(formatLocaleText(t('bot.websocketException'), { message: msg.data }), 'error');
           break;
         case FtWsMessageTypes.whitelist:
           whitelist.value = msg.data;

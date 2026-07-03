@@ -235,6 +235,47 @@ describe('deep coverage locale labels', () => {
     expect(resolveLocaleText('common.supported', 'en')).toBe('Supported');
     expect(resolveLocaleText('common.unsupported', 'en')).toBe('Unsupported');
   });
+
+  it('resolves remaining FreqUI-authored toast templates', () => {
+    expect(resolveLocaleText('bot.deleteLockSuccess', 'en')).toBe('Deleted Lock {lockId}.');
+    expect(resolveLocaleText('bot.deleteLockError', 'en')).toBe('Failed to delete lock {lockId}');
+    expect(resolveLocaleText('bot.historyTimeout', 'en')).toBe('Timeout exceeded');
+    expect(resolveLocaleText('bot.historyFetchError', 'en')).toBe('Error fetching history');
+    expect(resolveLocaleText('bot.backgroundJobStatusError', 'en')).toBe(
+      'Failed to get background job status',
+    );
+    expect(resolveLocaleText('bot.backgroundJobsCleared', 'en')).toBe(
+      'All non-running background jobs cleared',
+    );
+    expect(resolveLocaleText('bot.backgroundJobsClearError', 'en')).toBe(
+      'Failed to clear background jobs',
+    );
+    expect(resolveLocaleText('bot.startBotError', 'en')).toBe('Error starting bot.');
+    expect(resolveLocaleText('bot.addBlacklistPairError', 'en')).toBe(
+      'Error while adding pair {pair} to Blacklist: {message}',
+    );
+    expect(resolveLocaleText('bot.addBlacklistSuccess', 'en')).toBe('Pair {pairs} added.');
+    expect(resolveLocaleText('bot.addBlacklistError', 'en')).toBe(
+      'Error occurred while adding pairs to Blacklist: {message}',
+    );
+    expect(resolveLocaleText('bot.removeBlacklistPairError', 'en')).toBe(
+      'Error while removing pair {pair} from Blacklist: {message}',
+    );
+    expect(resolveLocaleText('bot.removeBlacklistSuccess', 'en')).toBe('Pair {pairs} removed.');
+    expect(resolveLocaleText('bot.removeBlacklistError', 'en')).toBe(
+      'Error occurred while removing pairs from Blacklist: {message}',
+    );
+    expect(resolveLocaleText('bot.backtestFailed', 'en')).toBe(
+      'Backtest failed: {message}.',
+    );
+    expect(resolveLocaleText('bot.websocketException', 'en')).toBe('WSException: {message}');
+    expect(
+      formatLocaleText(resolveLocaleText('bot.addBlacklistPairError', 'bilingual'), {
+        pair: 'BTC/USDT',
+        message: 'backend error_msg',
+      }),
+    ).toContain('backend error_msg');
+  });
 });
 
 describe('useAppI18n', () => {
