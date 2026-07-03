@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { ChartSliderPosition, PairHistory, Trade } from '@/types';
+import type {
+  ChartSliderPosition,
+  PairHistory,
+  PairHistoryLocal,
+  PlotConfig,
+  Trade,
+} from '@/types';
 import { LoadingStatus } from '@/types';
 
 const props = withDefaults(
@@ -11,6 +17,10 @@ const props = withDefaults(
     pair?: string;
     sliderPosition?: ChartSliderPosition;
     isSinglePairView?: boolean;
+    chartDataSource?: PairHistoryLocal;
+    chartDataStatus?: LoadingStatus;
+    plotConfigOverride?: PlotConfig;
+    chartWarningText?: string;
   }>(),
   {
     trades: () => [],
@@ -18,6 +28,10 @@ const props = withDefaults(
     pair: '',
     sliderPosition: undefined,
     isSinglePairView: true,
+    chartDataSource: undefined,
+    chartDataStatus: undefined,
+    plotConfigOverride: undefined,
+    chartWarningText: undefined,
   },
 );
 
@@ -32,6 +46,9 @@ const plotStore = usePlotConfigStore();
 const { t } = useAppI18n();
 
 const dataset = computed((): PairHistory | undefined => {
+  if (props.chartDataSource) {
+    return props.chartDataSource[`${props.pair}__${props.timeframe}`]?.data;
+  }
   if (props.historicView) {
     return botStore.activeBot.history[`${props.pair}__${props.timeframe}`]?.data;
   }
@@ -47,6 +64,10 @@ const datasetLoadedColumns = computed(() =>
 
 const hasDataset = computed(() => dataset.value && dataset.value.data.length > 0);
 const isLoadingDataset = computed((): boolean => {
+  if (props.chartDataStatus !== undefined) {
+    return props.chartDataStatus === LoadingStatus.loading;
+  }
+
   if (props.historicView) {
     return botStore.activeBot.historyStatus === LoadingStatus.loading;
   }
@@ -54,9 +75,9 @@ const isLoadingDataset = computed((): boolean => {
   return botStore.activeBot.candleDataStatus === LoadingStatus.loading;
 });
 const noDatasetText = computed((): string => {
-  const status = props.historicView
-    ? botStore.activeBot.historyStatus
-    : botStore.activeBot.candleDataStatus;
+  const status =
+    props.chartDataStatus ??
+    (props.historicView ? botStore.activeBot.historyStatus : botStore.activeBot.candleDataStatus);
 
   switch (status) {
     case LoadingStatus.not_loaded:
@@ -73,10 +94,18 @@ const noDatasetText = computed((): string => {
 });
 
 function refresh() {
+  if (props.chartDataSource) {
+    return;
+  }
+
   emit('refreshData', props.pair, plotStore.usedColumns);
 }
 
 function refreshIfNecessary() {
+  if (props.chartDataSource) {
+    return;
+  }
+
   if (!hasDataset.value) {
     refresh();
   }
@@ -102,6 +131,10 @@ watch(
 watch(
   () => plotStore.plotConfig,
   () => {
+    if (props.chartDataSource) {
+      return;
+    }
+
     // Trigger reload if the used columns are not loaded yet but would be available.
     const hasAllColumns = plotStore.usedColumns.some(
       (c) => datasetColumns.value.includes(c) && !datasetLoadedColumns.value.includes(c),
@@ -160,13 +193,16 @@ watch(
         <UProgress v-if="isLoadingDataset" stroke-width="4" small :label="t('common.loading')" />
       </div>
     </div>
+    <small v-if="chartWarningText" class="mx-2 mt-1 text-sm text-amber-700 dark:text-amber-300">
+      {{ chartWarningText }}
+    </small>
     <div class="h-full flex">
       <div class="min-w-0 w-full flex-1">
         <CandleChart
           v-if="hasDataset && dataset"
           :dataset="dataset"
           :trades="trades"
-          :plot-config="plotStore.plotConfig"
+          :plot-config="plotConfigOverride ?? plotStore.plotConfig"
           :heikin-ashi="settingsStore.useHeikinAshiCandles"
           :show-mark-area="settingsStore.showMarkArea"
           :use-u-t-c="settingsStore.timezone === 'UTC'"

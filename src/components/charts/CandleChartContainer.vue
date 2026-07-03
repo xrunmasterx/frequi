@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import type { ChartSliderPosition, PairHistory, Trade } from '@/types';
+import type {
+  ChartSliderPosition,
+  LoadingStatus,
+  PairHistory,
+  PairHistoryLocal,
+  PlotConfig,
+  Trade,
+} from '@/types';
 
 const props = withDefaults(
   defineProps<{
@@ -11,6 +18,11 @@ const props = withDefaults(
     reloadDataOnSwitch?: boolean;
     strategy?: string;
     sliderPosition?: ChartSliderPosition;
+    chartDataSource?: PairHistoryLocal;
+    chartDataStatus?: LoadingStatus;
+    plotConfigOverride?: PlotConfig;
+    chartStatusText?: string;
+    chartWarningText?: string;
   }>(),
   {
     trades: () => [],
@@ -18,6 +30,11 @@ const props = withDefaults(
     reloadDataOnSwitch: false,
     strategy: '',
     sliderPosition: undefined,
+    chartDataSource: undefined,
+    chartDataStatus: undefined,
+    plotConfigOverride: undefined,
+    chartStatusText: undefined,
+    chartWarningText: undefined,
   },
 );
 
@@ -32,6 +49,9 @@ const { t } = useAppI18n();
 
 const dataset = computed((): PairHistory | undefined => {
   const firstpair = botStore.activeBot.plotMultiPairs[0];
+  if (props.chartDataSource) {
+    return props.chartDataSource[`${firstpair}__${props.timeframe}`]?.data;
+  }
   if (props.historicView) {
     return botStore.activeBot.history[`${firstpair}__${props.timeframe}`]?.data;
   }
@@ -68,12 +88,20 @@ onMounted(() => {
 });
 
 function refresh() {
+  if (props.chartDataSource) {
+    return;
+  }
+
   for (const pair of botStore.activeBot.plotMultiPairs) {
     emit('refreshData', pair, plotStore.usedColumns);
   }
 }
 
 function refreshIfNecessary(newValue: string[], oldValue: string[] | undefined) {
+  if (props.chartDataSource) {
+    return;
+  }
+
   for (const pair of newValue) {
     if (oldValue?.includes(pair)) {
       continue;
@@ -172,6 +200,12 @@ const singlePairSelection = computed({
             icon="mdi:refresh"
             @click="refresh"
           />
+          <slot name="timeframe-select" />
+          <small
+            v-if="chartStatusText"
+            class="text-sm text-nowrap text-neutral-600 dark:text-neutral-400"
+            >{{ chartStatusText }}</small
+          >
         </div>
         <BaseCheckbox v-model="settingsStore.multiPairSelection">
           <span class="text-nowrap">{{ t('chart.multiPair') }}</span>
@@ -212,6 +246,10 @@ const singlePairSelection = computed({
           :timeframe="timeframe"
           :trades="props.trades"
           :slider-position="props.sliderPosition"
+          :chart-data-source="props.chartDataSource"
+          :chart-data-status="props.chartDataStatus"
+          :plot-config-override="props.plotConfigOverride"
+          :chart-warning-text="props.chartWarningText"
           :is-single-pair-view="isSinglePairView"
           @refresh-data="refresh()"
         >
