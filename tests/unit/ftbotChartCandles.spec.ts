@@ -1,7 +1,9 @@
 import { flushPromises } from '@vue/test-utils';
+import type * as VueUseCore from '@vueuse/core';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type * as LoginInfoComposable from '@/composables/loginInfo';
 import { createBotSubStore } from '@/stores/ftbot';
 import { useSettingsStore } from '@/stores/settings';
 import { useTradeChartStore } from '@/stores/tradeChart';
@@ -11,14 +13,23 @@ import { FtWsMessageTypes } from '@/types/wsMessageTypes';
 
 const apiPost = vi.hoisted(() => vi.fn());
 const apiGet = vi.hoisted(() => vi.fn());
-const apiClient = vi.hoisted(() => ({
-  post: apiPost,
-  get: apiGet,
-  interceptors: {
+const apiClient = vi.hoisted(() => {
+  const client = vi.fn() as unknown as {
+    get: typeof apiGet;
+    post: typeof apiPost;
+    interceptors: {
+      request: { use: ReturnType<typeof vi.fn> };
+      response: { use: ReturnType<typeof vi.fn> };
+    };
+  };
+  client.post = apiPost;
+  client.get = apiGet;
+  client.interceptors = {
     request: { use: vi.fn() },
     response: { use: vi.fn() },
-  },
-}));
+  };
+  return client;
+});
 
 const websocketMock = vi.hoisted(() => {
   let onMessage: ((ws: WebSocket, event: MessageEvent<string>) => void) | undefined;
@@ -51,7 +62,7 @@ vi.mock('axios', () => ({
 }));
 
 vi.mock('@vueuse/core', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@vueuse/core')>();
+  const actual = await importOriginal<typeof VueUseCore>();
   return {
     ...actual,
     useWebSocket: websocketMock.useWebSocket,
@@ -60,7 +71,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 vi.mock('@/composables/loginInfo', async (importOriginal) => {
   const { ref } = await import('vue');
-  const actual = await importOriginal<typeof import('@/composables/loginInfo')>();
+  const actual = await importOriginal<typeof LoginInfoComposable>();
   return {
     ...actual,
     useLoginInfo: () => ({
@@ -117,6 +128,13 @@ describe('ftbot chart candles websocket refresh', () => {
     apiPost.mockReset();
     apiGet.mockReset();
     apiPost.mockResolvedValue({ data: chartCandlesResponse() });
+  });
+
+  it('exposes authenticated API methods from the bot store', () => {
+    const bot = createBotSubStore('test-bot', 'Test Bot');
+
+    expect(typeof bot.api.get).toBe('function');
+    expect(typeof bot.api.post).toBe('function');
   });
 
   it('requests live chart candles when a new candle arrives for the active trade chart', async () => {
