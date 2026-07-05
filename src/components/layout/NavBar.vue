@@ -123,6 +123,11 @@ const navItems = computed<NavItem[]>(() => [
     icon: 'i-mdi-chart-line',
   },
   {
+    label: t('nav.research'),
+    to: '/research',
+    icon: 'i-mdi-chart-timeline-variant',
+  },
+  {
     label: t('nav.logs'),
     to: '/logs',
     icon: 'i-mdi-format-list-bulleted',
