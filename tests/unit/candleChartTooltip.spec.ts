@@ -86,6 +86,27 @@ describe('useCandleChartTooltip', () => {
     expect(html).not.toContain('>close<');
   });
 
+  it('formats category axis timestamp values before rendering the tooltip title', () => {
+    const html = renderTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: 1782698400000,
+        axisValueLabel: '1782698400000',
+        marker: '<span></span>',
+        encode: {
+          y: [1, 4, 3, 2],
+        },
+        value: [1782698400000, 1567.66, 1578.54, 1549.19, 1575.71],
+      },
+    ]);
+
+    expect(html).toMatch(/2026-06-\d{2}/);
+    expect(html).not.toContain('1782698400000');
+  });
+
   it('does not render empty entry or exit signal rows', () => {
     const html = renderTooltip([
       {
@@ -120,5 +141,54 @@ describe('useCandleChartTooltip', () => {
 
     expect(html).not.toContain('Entry /');
     expect(html).not.toContain('Exit /');
+  });
+
+  it('renders values from the active crosshair row instead of stale tooltip params', () => {
+    const selectedTimestamp = 1_782_698_460_000;
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [
+          [1_782_698_400_000, 100, 108, 90, 105],
+          [selectedTimestamp, 200, 208, 190, 205],
+        ],
+      },
+      series: [
+        {
+          name: 'Candles',
+          type: 'candlestick',
+          yAxisIndex: 0,
+          encode: {
+            y: [1, 4, 3, 2],
+          },
+        },
+      ],
+    });
+    const selectedCrosshair = shallowRef({
+      dataIndex: 1,
+      timestamp: selectedTimestamp,
+    });
+
+    const html = useCandleChartTooltip(chartOptions, selectedCrosshair).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: 1_782_698_400_000,
+        axisValueLabel: '1782698400000',
+        marker: '<span></span>',
+        encode: {
+          y: [1, 4, 3, 2],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105],
+      },
+    ] as never);
+
+    expect(html).toContain('200');
+    expect(html).toContain('208');
+    expect(html).toContain('190');
+    expect(html).toContain('205');
+    expect(html).not.toContain('100');
+    expect(html).not.toContain('105');
   });
 });

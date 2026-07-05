@@ -3,16 +3,25 @@ export type TimeAxisDomain = {
   max: number;
 };
 
+export function createCrosshairLineStyle() {
+  return {
+    color: '#cccccc',
+    opacity: 1,
+    type: 'dashed',
+    width: 1,
+  } as const;
+}
+
 export function createLinkedTimeAxisPointer() {
   return {
+    show: true,
     label: { show: false },
     lineStyle: {
-      color: '#cccccc',
-      opacity: 1,
-      type: 'dashed',
-      width: 1,
+      ...createCrosshairLineStyle(),
+      opacity: 0,
+      width: 0,
     },
-    snap: true,
+    snap: false,
   } as const;
 }
 
@@ -24,7 +33,7 @@ export function createMainPriceAxisPointer(labelFormatter: AxisPointerLabelForma
     type: 'line',
     snap: false,
     triggerTooltip: false,
-    lineStyle: createLinkedTimeAxisPointer().lineStyle,
+    lineStyle: createCrosshairLineStyle(),
     label: {
       show: true,
       formatter: labelFormatter,
@@ -32,7 +41,7 @@ export function createMainPriceAxisPointer(labelFormatter: AxisPointerLabelForma
       borderColor: '#cccccc',
       borderWidth: 1,
       color: '#ffffff',
-      padding: [3, 5],
+      padding: [3, 5] as number[],
       margin: 4,
     },
   } as const;
@@ -42,7 +51,10 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
-export function getTimeAxisDomain(rows: number[][], dateColumn: number): TimeAxisDomain | undefined {
+export function getTimeAxisDomain(
+  rows: number[][],
+  dateColumn: number,
+): TimeAxisDomain | undefined {
   if (dateColumn < 0) {
     return undefined;
   }

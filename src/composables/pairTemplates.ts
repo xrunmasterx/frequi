@@ -1,10 +1,17 @@
-const pairTemplates = ref([
+import type { LocaleKey } from '@/locales/keys';
+
+interface PairTemplate {
+  descriptionKey: LocaleKey;
+  pairs: string[];
+}
+
+const pairTemplates = ref<PairTemplate[]>([
   {
-    description: 'All USDT Pairs',
+    descriptionKey: 'webserver.download.allUsdtPairs',
     pairs: ['.*/USDT'],
   },
   {
-    description: 'All USDT Futures Pairs',
+    descriptionKey: 'webserver.download.allUsdtFuturesPairs',
     pairs: ['.*/USDT:USDT'],
   },
 ]);

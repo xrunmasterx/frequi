@@ -113,9 +113,7 @@ describe('deep coverage locale labels', () => {
         percent: '1.23%',
       }),
     ).toBe('Total Profit (Open and realized) 1.23% / 总收益（未平仓和已实现） 1.23%');
-    expect(resolveLocaleText('dashboard.balanceAppendixDry', 'bilingual')).toBe(
-      '(dry) / （模拟）',
-    );
+    expect(resolveLocaleText('dashboard.balanceAppendixDry', 'bilingual')).toBe('(dry) / （模拟）');
     expect(resolveLocaleText('dashboard.balanceAppendixLive', 'bilingual')).toBe(
       '(live) / （实盘）',
     );
@@ -128,9 +126,9 @@ describe('deep coverage locale labels', () => {
     expect(resolveLocaleText('bot.profitCurrency', 'bilingual')).toBe(
       'Profit {currency} / {currency} 收益',
     );
-    expect(formatLocaleText(resolveLocaleText('bot.profitCurrency', 'bilingual'), { currency: 'USDT' })).toBe(
-      'Profit USDT / USDT 收益',
-    );
+    expect(
+      formatLocaleText(resolveLocaleText('bot.profitCurrency', 'bilingual'), { currency: 'USDT' }),
+    ).toBe('Profit USDT / USDT 收益');
     expect(resolveLocaleText('bot.drawdownRange', 'bilingual')).toBe(
       'from {start} to {end} / 从 {start} 到 {end}',
     );
@@ -192,13 +190,10 @@ describe('deep coverage locale labels', () => {
   });
 
   it('formats trade confirmation prompts as complete bilingual sentences', () => {
-    const exitPrompt = formatLocaleText(
-      resolveLocaleText('trade.confirmExitTrade', 'bilingual'),
-      {
-        tradeId: 42,
-        pair: 'BTC/USDT',
-      },
-    );
+    const exitPrompt = formatLocaleText(resolveLocaleText('trade.confirmExitTrade', 'bilingual'), {
+      tradeId: 42,
+      pair: 'BTC/USDT',
+    });
     const exitWithOrderPrompt = formatLocaleText(
       resolveLocaleText('trade.confirmExitTradeUsingOrder', 'bilingual'),
       {
@@ -226,9 +221,7 @@ describe('deep coverage locale labels', () => {
     expect(resolveLocaleText('trade.customDataForTrade', 'en')).toBe(
       'Custom data for trade {tradeId}',
     );
-    expect(resolveLocaleText('trade.deleteTradeSuccess', 'en')).toBe(
-      'Deleted Trade {tradeId}',
-    );
+    expect(resolveLocaleText('trade.deleteTradeSuccess', 'en')).toBe('Deleted Trade {tradeId}');
     expect(resolveLocaleText('trade.cancelOpenOrderError', 'en')).toBe(
       'Failed to cancel open order {tradeId}',
     );
@@ -265,9 +258,7 @@ describe('deep coverage locale labels', () => {
     expect(resolveLocaleText('bot.removeBlacklistError', 'en')).toBe(
       'Error occurred while removing pairs from Blacklist: {message}',
     );
-    expect(resolveLocaleText('bot.backtestFailed', 'en')).toBe(
-      'Backtest failed: {message}.',
-    );
+    expect(resolveLocaleText('bot.backtestFailed', 'en')).toBe('Backtest failed: {message}.');
     expect(resolveLocaleText('bot.websocketException', 'en')).toBe('WSException: {message}');
     expect(
       formatLocaleText(resolveLocaleText('bot.addBlacklistPairError', 'bilingual'), {
@@ -280,7 +271,9 @@ describe('deep coverage locale labels', () => {
 
 describe('home locale labels', () => {
   it('resolves homepage and bot list labels', () => {
-    expect(resolveLocaleText('home.availableBots', 'bilingual')).toBe('Available bots / 可用机器人');
+    expect(resolveLocaleText('home.availableBots', 'bilingual')).toBe(
+      'Available bots / 可用机器人',
+    );
     expect(resolveLocaleText('home.addNewBot', 'bilingual')).toBe('Add new Bot / 添加新机器人');
     expect(resolveLocaleText('home.welcomeTitle', 'bilingual')).toBe(
       'Welcome to the FreqtradeUI / 欢迎使用 FreqtradeUI',
@@ -290,6 +283,57 @@ describe('home locale labels', () => {
     );
     expect(resolveLocaleText('home.documentationLink', 'bilingual')).toBe(
       'Freqtrade Documentation / Freqtrade 文档',
+    );
+  });
+});
+
+describe('webserver mode locale labels', () => {
+  it('resolves backtesting labels', () => {
+    expect(resolveLocaleText('webserver.backtest.title', 'bilingual')).toBe('Backtesting / 回测');
+    expect(resolveLocaleText('webserver.backtest.runBacktest', 'bilingual')).toBe(
+      'Run backtest / 运行回测',
+    );
+    expect(resolveLocaleText('webserver.backtest.startBacktest', 'bilingual')).toBe(
+      'Start backtest / 开始回测',
+    );
+    expect(resolveLocaleText('webserver.backtest.resultsPerPair', 'bilingual')).toBe(
+      'Results per pair / 按交易对统计结果',
+    );
+  });
+
+  it('resolves download data and pairlist configurator labels', () => {
+    expect(resolveLocaleText('webserver.download.title', 'bilingual')).toBe(
+      'Downloading Data / 下载数据',
+    );
+    expect(resolveLocaleText('webserver.download.startDownload', 'bilingual')).toBe(
+      'Start Download / 开始下载',
+    );
+    expect(resolveLocaleText('webserver.download.allUsdtPairs', 'bilingual')).toBe(
+      'All USDT Pairs / 全部 USDT 现货交易对',
+    );
+    expect(resolveLocaleText('webserver.download.allUsdtFuturesPairs', 'bilingual')).toBe(
+      'All USDT Futures Pairs / 全部 USDT 期货交易对',
+    );
+    expect(resolveLocaleText('webserver.pairlistConfig.title', 'bilingual')).toBe(
+      'Pairlist Configurator / 交易对列表配置器',
+    );
+    expect(resolveLocaleText('webserver.pairlistConfig.evaluate', 'bilingual')).toBe(
+      'Evaluate / 评估',
+    );
+  });
+
+  it('resolves recursive and lookahead analysis labels', () => {
+    expect(resolveLocaleText('webserver.analysis.recursiveTitle', 'bilingual')).toBe(
+      'Recursive Analysis / 递归分析',
+    );
+    expect(resolveLocaleText('webserver.analysis.lookaheadTitle', 'bilingual')).toBe(
+      'Lookahead Analysis / 前瞻分析',
+    );
+    expect(resolveLocaleText('webserver.analysis.analysisResult', 'bilingual')).toBe(
+      'Analysis Result / 分析结果',
+    );
+    expect(resolveLocaleText('webserver.analysis.noLookaheadBias', 'bilingual')).toBe(
+      'No lookahead bias detected / 未检测到前瞻偏差',
     );
   });
 });

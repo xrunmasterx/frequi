@@ -169,19 +169,19 @@ watch(
           <div class="flex flex-row flex-wrap gap-2">
             <small v-if="dataset" class="text-sm text-nowrap" :title="t('chart.longEntries')"
               >{{ t('chart.longEntries') }}:
-              {{ dataset.enter_long_signals || dataset.buy_signals }}</small
+              {{ dataset.enter_long_signals ?? dataset.buy_signals ?? 0 }}</small
             >
             <small v-if="dataset" class="text-sm text-nowrap" :title="t('chart.longExit')"
               >{{ t('chart.longExit') }}:
-              {{ dataset.exit_long_signals || dataset.sell_signals }}</small
+              {{ dataset.exit_long_signals ?? dataset.sell_signals ?? 0 }}</small
             >
           </div>
           <div class="flex flex-row flex-wrap gap-2">
-            <small v-if="dataset && dataset.enter_short_signals" class="text-sm text-nowrap"
-              >{{ t('chart.shortEntries') }}: {{ dataset.enter_short_signals }}</small
+            <small v-if="dataset" class="text-sm text-nowrap" :title="t('chart.shortEntries')"
+              >{{ t('chart.shortEntries') }}: {{ dataset.enter_short_signals ?? 0 }}</small
             >
-            <small v-if="dataset && dataset.exit_short_signals" class="text-sm text-nowrap"
-              >{{ t('chart.shortExits') }}: {{ dataset.exit_short_signals }}</small
+            <small v-if="dataset" class="text-sm text-nowrap" :title="t('chart.shortExits')"
+              >{{ t('chart.shortExits') }}: {{ dataset.exit_short_signals ?? 0 }}</small
             >
           </div>
         </div>

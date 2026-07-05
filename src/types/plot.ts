@@ -11,6 +11,7 @@ export interface IndicatorConfig {
   type?: ChartType | ChartTypeString;
   fill_to?: string;
   scatterSymbolSize?: number;
+  hidden?: boolean;
 }
 
 export interface PlotConfig {

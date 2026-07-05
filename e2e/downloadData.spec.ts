@@ -60,15 +60,22 @@ test.describe('Download Data View', () => {
     const downloadData = page.locator('a', { hasText: 'Download Data' });
     await Promise.all([downloadData.click(), page.waitForURL('**/download_data')]);
 
+    await expect(
+      page.getByRole('button', { name: /All USDT Pairs \/ 全部 USDT 现货交易对/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /All USDT Futures Pairs \/ 全部 USDT 期货交易对/ }),
+    ).toBeVisible();
+
     await page.getByRole('button', { name: 'All USDT Pairs' }).click();
 
-    await page.getByRole('spinbutton', { name: 'Days to download' }).click();
+    await page.getByRole('spinbutton', { name: /Days to download/ }).click();
 
-    const daysInput = page.getByRole('spinbutton', { name: 'Days to download' });
+    const daysInput = page.getByRole('spinbutton', { name: /Days to download/ });
     await daysInput.clear();
     await page.keyboard.type('3');
     await page.keyboard.press('Tab');
-    const startDownloadBtn = page.getByRole('button', { name: 'Start Download' });
+    const startDownloadBtn = page.getByRole('button', { name: /Start Download/ });
 
     await Promise.all([
       startDownloadBtn.click(),
@@ -99,14 +106,14 @@ test.describe('Download Data View', () => {
     await Promise.all([downloadData.click(), page.waitForURL('**/download_data')]);
 
     await page.getByRole('button', { name: 'All USDT Pairs' }).click();
-    const daysInput = page.getByLabel('Days to download');
+    const daysInput = page.getByLabel(/Days to download/);
     await daysInput.clear();
     await page.keyboard.type('3');
     await page.keyboard.press('Tab');
 
-    await page.getByRole('button', { name: 'Advanced Options' }).click();
-    await page.getByText('Erase existing data').click();
-    const startDownloadBtn = page.getByRole('button', { name: 'Start Download' });
+    await page.getByRole('button', { name: /Advanced options/ }).click();
+    await page.getByText(/Erase existing data/).click();
+    const startDownloadBtn = page.getByRole('button', { name: /Start Download/ });
 
     await Promise.all([
       startDownloadBtn.click(),

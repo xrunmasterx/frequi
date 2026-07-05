@@ -4,7 +4,7 @@ import { ChartType } from '@/types';
 
 import ECharts from 'vue-echarts';
 
-import type { EChartsOption, ScatterSeriesOption } from 'echarts';
+import type { EChartsOption, ElementEvent, ScatterSeriesOption } from 'echarts';
 import { BarChart, CandlestickChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
   AxisPointerComponent,
@@ -20,12 +20,42 @@ import {
   VisualMapComponent,
   VisualMapPiecewiseComponent,
   MarkAreaComponent,
+  GraphicComponent,
   MarkLineComponent,
   MarkPointComponent,
-  GraphicComponent,
 } from 'echarts/components';
 import { use } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
+
+import {
+  createLinkedTimeAxisPointer,
+  createMainPriceAxisPointer,
+  getTimeAxisDomain,
+  withLinkedTimeAxisMapping,
+} from '@/utils/charts/candleChartAxis';
+import {
+  buildInitialTimeDataZoomRange,
+  buildLinkedDataZoomOptions,
+  captureDataZoomRange,
+  createAxisIndexes,
+  restoreDataZoomRange,
+} from '@/utils/charts/chartZoom';
+import { formatIndicatorLabel, isIndicatorVisible } from '@/utils/charts/candleChartSeries';
+import {
+  buildCrosshairGraphics,
+  buildRemoveCrosshairGraphics,
+  containsAnyGrid,
+  containsGrid,
+  findNearestCandleIndex,
+  getGridRect,
+  getGridUnionRect,
+  getMainGridPriceAtPixel,
+  getTimeValueAtPixel,
+  getXAxisPixel,
+  type CandleChartCrosshairSelection,
+} from '@/utils/charts/candleChartCrosshair';
+import { getPlotConfigKey } from '@/utils/charts/plotConfigKey';
+import { formatSignalTooltipValue } from '@/utils/charts/signalTooltip';
 
 use([
   AxisPointerComponent,
@@ -41,6 +71,7 @@ use([
   VisualMapComponent,
   VisualMapPiecewiseComponent,
   MarkAreaComponent,
+  GraphicComponent,
   MarkLineComponent,
   MarkPointComponent,
 
@@ -49,7 +80,6 @@ use([
   LineChart,
   ScatterChart,
   CanvasRenderer,
-  GraphicComponent,
 ]);
 
 const props = defineProps<{
@@ -90,6 +120,10 @@ const shortexitSignalColor = '#faba25';
 
 const candleChart = useTemplateRef<InstanceType<typeof ECharts>>('candleChart');
 const chartOptions = shallowRef<EChartsOption>({});
+const crosshairSelection = shallowRef<CandleChartCrosshairSelection>();
+const crosshairRows = shallowRef<number[][]>([]);
+const crosshairDateColumn = ref(-1);
+const crosshairGridCount = ref(0);
 const settingsStore = useSettingsStore();
 const { t } = useAppI18n();
 
@@ -120,6 +154,7 @@ const chartTitle = computed(() => {
 const diffCols = computed(() => {
   return getDiffColumnsFromPlotConfig(props.plotConfig);
 });
+const plotConfigKey = computed(() => getPlotConfigKey(props.plotConfig));
 
 usePercentageTool(
   candleChart,
@@ -127,7 +162,86 @@ usePercentageTool(
   toRef(() => props.dataset.timeframe_ms),
 );
 
-const { formatCandleTooltip } = useCandleChartTooltip(chartOptions);
+const { formatCandleTooltip } = useCandleChartTooltip(chartOptions, crosshairSelection);
+
+function formatPriceAxisPointerLabel(params: { value: unknown }) {
+  const value = Number(params.value);
+
+  return Number.isFinite(value) ? formatDecimal(value, 'en-EN') : '';
+}
+
+function hideCrosshair() {
+  crosshairSelection.value = undefined;
+  candleChart.value?.dispatchAction({ type: 'hideTip' });
+  candleChart.value?.setOption({
+    graphic: buildRemoveCrosshairGraphics(),
+  } as EChartsOption);
+}
+
+function updateCrosshairGraphic(x: number, y: number) {
+  const chart = candleChart.value;
+  if (!chart || !containsAnyGrid(chart, crosshairGridCount.value, x, y)) {
+    hideCrosshair();
+    return;
+  }
+
+  const pointerTimestamp = getTimeValueAtPixel(chart, x);
+  if (pointerTimestamp === undefined) {
+    hideCrosshair();
+    return;
+  }
+
+  const dataIndex = findNearestCandleIndex(
+    crosshairRows.value,
+    crosshairDateColumn.value,
+    pointerTimestamp,
+  );
+  const selectedRow = dataIndex === undefined ? undefined : crosshairRows.value[dataIndex];
+  const timestamp =
+    selectedRow && crosshairDateColumn.value >= 0
+      ? Number(selectedRow[crosshairDateColumn.value])
+      : undefined;
+  if (dataIndex === undefined || timestamp === undefined || !Number.isFinite(timestamp)) {
+    hideCrosshair();
+    return;
+  }
+
+  const xPixel = getXAxisPixel(chart, timestamp);
+  const verticalRect = getGridUnionRect(chart, crosshairGridCount.value);
+  if (xPixel === undefined || !verticalRect) {
+    hideCrosshair();
+    return;
+  }
+
+  crosshairSelection.value = { dataIndex, timestamp };
+
+  const mainRect = getGridRect(chart, 0);
+  const price = containsGrid(chart, 0, x, y) ? getMainGridPriceAtPixel(chart, xPixel, y) : undefined;
+  const graphic = buildCrosshairGraphics({
+    x: xPixel,
+    verticalRect,
+    horizontal:
+      mainRect && price !== undefined
+        ? {
+            y,
+            rect: mainRect,
+            label: formatPriceAxisPointerLabel({ value: price }),
+            labelSide: props.labelSide,
+          }
+        : undefined,
+  });
+
+  chart.setOption({ graphic } as EChartsOption);
+  chart.dispatchAction({
+    type: 'showTip',
+    seriesIndex: 0,
+    dataIndex,
+  });
+}
+
+function handleCrosshairMove(event: ElementEvent) {
+  updateCrosshairGraphic(Number(event.offsetX), Number(event.offsetY));
+}
 
 function addLegend(name: string, position: number | undefined = undefined) {
   if (
@@ -136,11 +250,12 @@ function addLegend(name: string, position: number | undefined = undefined) {
     !Array.isArray(chartOptions.value.legend.data)
   )
     return;
-  if (!chartOptions.value.legend.data.includes(name)) {
+  const label = formatIndicatorLabel(name);
+  if (!chartOptions.value.legend.data.includes(label)) {
     if (position !== undefined) {
-      chartOptions.value.legend.data.splice(position, 0, name);
+      chartOptions.value.legend.data.splice(position, 0, label);
     } else {
-      chartOptions.value.legend.data.push(name);
+      chartOptions.value.legend.data.push(label);
     }
   }
 }
@@ -169,6 +284,7 @@ function updateChart(initial = false) {
   if (!hasData.value) {
     return;
   }
+  const currentZoomRange = initial ? undefined : captureDataZoomRange(candleChart.value);
   const nameCandles = t('chart.legendCandles');
   const nameVolume = t('chart.legendVolume');
   const nameEntry = t('chart.legendEntry');
@@ -199,28 +315,12 @@ function updateChart(initial = false) {
   const colShortExitData = columns.findIndex((el) => el === '_exit_short_signal_close');
 
   const subplotCount =
-    'subplots' in props.plotConfig ? Object.keys(props.plotConfig.subplots).length + 1 : 1;
+    'subplots' in props.plotConfig
+      ? Object.values(props.plotConfig.subplots).filter((subplot) =>
+          Object.values(subplot).some(isIndicatorVisible),
+        ).length + 1
+      : 1;
 
-  if (Array.isArray(chartOptions.value?.dataZoom)) {
-    // Only set zoom once ...
-    if (initial) {
-      // Add 2 candles to the initial zoom to allow for a "scroll past" effect
-      const startingZoom = (1 - (props.startCandleCount + 2) / props.dataset.length) * 100;
-      chartOptions.value.dataZoom.forEach((el, i) => {
-        if (chartOptions.value && chartOptions.value.dataZoom) {
-          chartOptions.value.dataZoom[i].start = startingZoom;
-        }
-      });
-    } else {
-      // Remove start/end settings after chart initialization to avoid chart resetting
-      chartOptions.value.dataZoom.forEach((el, i) => {
-        if (chartOptions.value && chartOptions.value.dataZoom) {
-          delete chartOptions.value.dataZoom[i].start;
-          delete chartOptions.value.dataZoom[i].end;
-        }
-      });
-    }
-  }
   let dataset = props.heikinAshi
     ? heikinAshiDataset(columns, props.dataset.data)
     : props.dataset.data.slice();
@@ -233,12 +333,15 @@ function updateChart(initial = false) {
   });
   // Add new rows to end to allow slight "scroll past"
   const scrollPastLength = 5;
+  crosshairRows.value = dataset.slice();
+  crosshairDateColumn.value = colDate;
   const lastColDate = dataset[dataset.length - 1]?.[colDate];
   if (lastColDate) {
     const newArray = Array(scrollPastLength);
     newArray[colDate] = lastColDate + props.dataset.timeframe_ms * scrollPastLength;
     dataset.push(newArray);
   }
+  const timeAxisDomain = getTimeAxisDomain(dataset, colDate);
 
   const options: EChartsOption = {
     dataset: {
@@ -294,34 +397,32 @@ function updateChart(initial = false) {
       },
     ],
     xAxis: [
-      {
-        type: 'time',
-        axisLine: { onZero: false },
-        axisTick: { show: true },
-        axisLabel: { show: true },
-        axisPointer: {
-          label: { show: false },
+      withLinkedTimeAxisMapping(
+        {
+          type: 'time',
+          axisLine: { onZero: false },
+          axisTick: { show: true },
+          axisLabel: { show: true },
+          axisPointer: createLinkedTimeAxisPointer(),
+          position: 'top',
+          splitLine: { show: false },
+          splitNumber: 20,
         },
-        position: 'top',
-        splitLine: { show: false },
-        splitNumber: 20,
-        min: 'dataMin',
-        max: 'dataMax',
-      },
-      {
-        type: 'time',
-        gridIndex: 1,
-        axisLine: { onZero: false },
-        axisTick: { show: false },
-        axisLabel: { show: false },
-        axisPointer: {
-          label: { show: false },
+        timeAxisDomain,
+      ),
+      withLinkedTimeAxisMapping(
+        {
+          type: 'time',
+          gridIndex: 1,
+          axisLine: { onZero: false },
+          axisTick: { show: false },
+          axisLabel: { show: false },
+          axisPointer: createLinkedTimeAxisPointer(),
+          splitLine: { show: false },
+          splitNumber: 20,
         },
-        splitLine: { show: false },
-        splitNumber: 20,
-        min: 'dataMin',
-        max: 'dataMax',
-      },
+        timeAxisDomain,
+      ),
     ],
     yAxis: [
       {
@@ -341,6 +442,7 @@ function updateChart(initial = false) {
           overflow: 'truncate',
         },
         position: props.labelSide,
+        axisPointer: createMainPriceAxisPointer(formatPriceAxisPointerLabel),
       },
       {
         scale: true,
@@ -349,6 +451,7 @@ function updateChart(initial = false) {
         name: nameVolume,
         nameLocation: 'middle',
         position: props.labelSide,
+        axisPointer: { show: false },
         nameGap: NAMEGAP,
         axisLabel: { show: false },
         axisLine: { show: showAxisLine },
@@ -422,25 +525,8 @@ function updateChart(initial = false) {
             color: signal.color,
           },
           tooltip: {
-            valueFormatter: (value) => {
-              if (Array.isArray(value)) {
-                if (value.length > 0 && value[0]) {
-                  // If tag column number get's too high, we get the full list as second argument (for no good reason)
-                  const tag = Array.isArray(value[1])
-                    ? value[1][signal.colTooltip]?.toString()
-                    : value[1]?.toString();
-                  const tagShort = tag.substring(0, 100);
-
-                  // Show both prefix and tag
-                  // Value would be in value[0] - but we don't show this to avoid showing the same data multiple times as it would correspond to the close price of the candle.
-                  return `${signal.tooltipPrefix} ${tagShort ? `(${tagShort})` : ''}`;
-                }
-                // fall back to empty output if tag ain't set.
-                return '';
-              }
-              // Fallback for single value
-              return value ? `${signal.tooltipPrefix} ${value}` : '';
-            },
+            valueFormatter: (value) =>
+              formatSignalTooltipValue(value, signal.tooltipPrefix, signal.colTooltip),
           },
           encode: {
             x: colDate,
@@ -455,6 +541,9 @@ function updateChart(initial = false) {
 
   if ('main_plot' in props.plotConfig) {
     Object.entries(props.plotConfig.main_plot).forEach(([key, value]) => {
+      if (!isIndicatorVisible(value)) {
+        return;
+      }
       const col = columns.findIndex((el) => el === key);
       if (col > 0) {
         addLegend(key);
@@ -489,6 +578,11 @@ function updateChart(initial = false) {
   if ('subplots' in props.plotConfig) {
     let plotIndex = 2;
     Object.entries(props.plotConfig.subplots).forEach(([key, value]) => {
+      const visibleEntries = Object.entries(value).filter(([, sv]) => isIndicatorVisible(sv));
+      if (visibleEntries.length === 0) {
+        return;
+      }
+
       // define yaxis
 
       // Subplots are added from bottom to top - only the "bottom-most" plot stays at the bottom.
@@ -500,6 +594,7 @@ function updateChart(initial = false) {
           gridIndex: currGridIdx,
           name: key,
           position: props.labelSide,
+          axisPointer: { show: false },
           nameLocation: 'middle',
           nameGap: NAMEGAP,
           axisLabel: {
@@ -513,23 +608,20 @@ function updateChart(initial = false) {
         });
       }
       if (Array.isArray(options.xAxis) && options.xAxis.length <= plotIndex) {
-        options.xAxis.push({
-          type: 'time',
-          gridIndex: currGridIdx,
-          axisLine: { onZero: false },
-          axisTick: { show: false },
-          axisLabel: { show: false },
-          axisPointer: {
-            label: { show: false },
-          },
-          splitLine: { show: false },
-          splitNumber: 20,
-        });
-      }
-      if (Array.isArray(chartOptions.value.dataZoom)) {
-        // Must be set on the chartOptions object - options doesn't have dataZoom at this point
-        chartOptions.value.dataZoom.forEach((el) =>
-          el.xAxisIndex && Array.isArray(el.xAxisIndex) ? el.xAxisIndex.push(plotIndex) : null,
+        options.xAxis.push(
+          withLinkedTimeAxisMapping(
+            {
+              type: 'time',
+              gridIndex: currGridIdx,
+              axisLine: { onZero: false },
+              axisTick: { show: false },
+              axisLabel: { show: false },
+              axisPointer: createLinkedTimeAxisPointer(),
+              splitLine: { show: false },
+              splitNumber: 20,
+            },
+            timeAxisDomain,
+          ),
         );
       }
       if (options.grid && Array.isArray(options.grid)) {
@@ -540,7 +632,7 @@ function updateChart(initial = false) {
           height: `${SUBPLOTHEIGHT}%`,
         });
       }
-      Object.entries(value).forEach(([sk, sv]) => {
+      visibleEntries.forEach(([sk, sv]) => {
         // entries per subplot
         const col = columns.findIndex((el) => el === sk);
         if (col > 0) {
@@ -606,14 +698,24 @@ function updateChart(initial = false) {
   if (Array.isArray(options.series)) {
     options.series.push(tradesSeries);
   }
+  if (Array.isArray(options.xAxis)) {
+    const xAxisIndex = createAxisIndexes(options.xAxis.length);
+    const initialZoomRange = initial
+      ? buildInitialTimeDataZoomRange(props.dataset.data, colDate, props.startCandleCount + 2)
+      : undefined;
+    options.dataZoom = buildLinkedDataZoomOptions(xAxisIndex, initialZoomRange);
+  }
+  crosshairGridCount.value = Array.isArray(options.grid) ? options.grid.length : 0;
+  crosshairSelection.value = undefined;
 
   // Merge this into original data
   Object.assign(chartOptions.value, options);
   // console.log('chartOptions', chartOptions.value);
   candleChart.value?.setOption(chartOptions.value, {
-    replaceMerge: ['series', 'grid', 'yAxis', 'xAxis', 'legend'],
+    replaceMerge: ['series', 'grid', 'yAxis', 'xAxis', 'legend', 'dataZoom'],
     notMerge: initial,
   });
+  restoreDataZoomRange(candleChart.value, currentZoomRange);
 }
 
 function initializeChartOptions() {
@@ -653,12 +755,11 @@ function initializeChartOptions() {
         color: '#fff',
       },
       axisPointer: {
-        type: 'cross',
-        lineStyle: {
-          color: '#cccccc',
-          width: 1,
-          opacity: 1,
-        },
+        show: false,
+        type: 'line',
+        axis: 'x',
+        snap: false,
+        lineStyle: createLinkedTimeAxisPointer().lineStyle,
       },
       // positioning copied from https://echarts.apache.org/en/option.html#tooltip.position
       position(pos, params, dom, rect, size) {
@@ -672,27 +773,13 @@ function initializeChartOptions() {
     },
     axisPointer: {
       link: [{ xAxisIndex: 'all' }],
+      snap: false,
       label: {
+        show: false,
         backgroundColor: '#777',
       },
     },
 
-    dataZoom: [
-      // Start values are recalculated once the data is known
-      {
-        type: 'inside',
-        xAxisIndex: [0, 1],
-        start: 80,
-        end: 100,
-      },
-      {
-        xAxisIndex: [0, 1],
-        bottom: 10,
-        start: 80,
-        end: 100,
-        ...dataZoomPartial,
-      },
-    ],
     // visualMap: {
     //   //  TODO: this would allow to colorize volume bars (if we'd want this)
     //   //  Needs green / red indicator column in data.
@@ -755,7 +842,7 @@ onMounted(() => {
   initializeChartOptions();
 });
 
-watch([() => props.useUTC, () => props.theme, () => props.plotConfig], () =>
+watch([() => props.useUTC, () => props.theme, () => plotConfigKey.value], () =>
   initializeChartOptions(),
 );
 
@@ -776,12 +863,24 @@ watch(
 </script>
 
 <template>
-  <div class="h-full w-full">
-    <ECharts v-if="hasData" ref="candleChart" :theme="theme" autoresize manual-update />
+  <div class="candle-chart-wrapper h-full w-full">
+    <ECharts
+      v-if="hasData"
+      ref="candleChart"
+      :theme="theme"
+      autoresize
+      manual-update
+      @zr:mousemove="handleCrosshairMove"
+      @zr:globalout="hideCrosshair"
+    />
   </div>
 </template>
 
 <style scoped lang="css">
+.candle-chart-wrapper {
+  position: relative;
+}
+
 .echarts {
   width: 100%;
   min-height: 200px;

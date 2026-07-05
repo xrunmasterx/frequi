@@ -14,6 +14,7 @@ export const usePairlistConfigStore = defineStore(
   'pairlistConfig',
   () => {
     const botStore = useBotStore();
+    const { t } = useAppI18n();
 
     const evaluating = ref<boolean>(false);
     const stakeCurrency = ref<string>(botStore.activeBot?.stakeCurrency ?? 'USDT');
@@ -148,7 +149,7 @@ export const usePairlistConfigStore = defineStore(
         const { job_id: jobId } = await botStore.activeBot.evaluatePairlist(payload);
         const status = await botStore.activeBot.pollBgJob(jobId, 'pairlist');
         if (status.status === 'failed') {
-          showAlert(status.error || 'Evaluation failed', 'error');
+          showAlert(status.error || t('webserver.pairlistConfig.evaluationFailed'), 'error');
           return;
         }
         const wl = await botStore.activeBot.getPairlistEvalResult(jobId);
@@ -158,7 +159,7 @@ export const usePairlistConfigStore = defineStore(
           showAlert(wl.error, 'error');
         }
       } catch (error) {
-        showAlert('Evaluation failed', 'error');
+        showAlert(t('webserver.pairlistConfig.evaluationFailed'), 'error');
       } finally {
         evaluating.value = false;
       }

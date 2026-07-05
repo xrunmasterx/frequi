@@ -3,6 +3,7 @@ import ChartView from '@/views/ChartsView.vue';
 
 const botStore = useBotStore();
 const pairlistStore = usePairlistConfigStore();
+const { t } = useAppI18n();
 
 const whitelist = ref<{ enabled: boolean; pair: string }[]>([]);
 
@@ -54,7 +55,7 @@ watch(
       </div>
     </div>
     <div v-else>
-      <p>Evaluation returned 0 pairs</p>
+      <p>{{ t('webserver.pairlistConfig.returnedNoPairs') }}</p>
     </div>
   </div>
 </template>

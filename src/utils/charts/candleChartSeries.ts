@@ -4,6 +4,43 @@ import type { BarSeriesOption, LineSeriesOption, ScatterSeriesOption } from 'ech
 
 export type SupportedSeriesTypes = LineSeriesOption | BarSeriesOption | ScatterSeriesOption;
 
+export function isIndicatorVisible(value: IndicatorConfig): boolean {
+  return value.hidden !== true;
+}
+
+export function formatIndicatorLabel(key: string): string {
+  const maMatch = /^watch_ma(\d+)$/.exec(key);
+  if (maMatch) {
+    return `MA${maMatch[1]}`;
+  }
+
+  const rsiMatch = /^watch_rsi(\d+)$/.exec(key);
+  if (rsiMatch) {
+    return `RSI ${rsiMatch[1]}`;
+  }
+
+  if (key === 'watch_macd' || /^watch_macd_\d+_\d+_\d+$/.test(key)) {
+    return 'MACD';
+  }
+  if (key === 'watch_macdsignal' || /^watch_macdsignal_\d+_\d+_\d+$/.test(key)) {
+    return 'Signal';
+  }
+  if (key === 'watch_macdhist' || /^watch_macdhist_\d+_\d+_\d+$/.test(key)) {
+    return 'Histogram';
+  }
+
+  const supertrendMatch = /^watch_supertrend_(up|down)(?:_(\d+)_(\d+(?:_\d+)?))?$/.exec(key);
+  if (supertrendMatch) {
+    const direction = supertrendMatch[1] === 'up' ? 'Up' : 'Down';
+    const period = supertrendMatch[2];
+    const multiplier = supertrendMatch[3]?.replace('_', '.');
+    const suffix = period && multiplier ? ` ${period}/${multiplier}` : '';
+    return `Supertrend ${direction}${suffix}`;
+  }
+
+  return key;
+}
+
 export function generateCandleSeries(
   colDate: number,
   col: number,
@@ -12,7 +49,7 @@ export function generateCandleSeries(
   axis = 0,
 ): SupportedSeriesTypes {
   const sp: SupportedSeriesTypes = {
-    name: key,
+    name: formatIndicatorLabel(key),
     type: value.type || 'line',
     xAxisIndex: axis,
     yAxisIndex: axis,

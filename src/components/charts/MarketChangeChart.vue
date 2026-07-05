@@ -35,9 +35,6 @@ use([
   TransformComponent,
 ]);
 
-// Define Column labels here to avoid typos
-const CHART_MARKET_CHANGE = 'Market change %';
-
 const props = withDefaults(
   defineProps<{
     marketChangeData: BacktestMarketChange | null;
@@ -49,6 +46,7 @@ const props = withDefaults(
 );
 
 const settingsStore = useSettingsStore();
+const { t } = useAppI18n();
 
 const marketChangeChart = ref(null);
 registerTransform(ftEchartsTransforms.multiple);
@@ -59,9 +57,10 @@ const marketChangeOptions: ComputedRef<EChartsOption> = computed(() => {
   }
   const colDate = props.marketChangeData.columns.findIndex((el) => el === '__date_ts');
   const colRelMean = props.marketChangeData.columns.findIndex((el) => el === 'rel_mean');
+  const chartMarketChange = t('webserver.backtest.marketChangePercent');
   return {
     title: {
-      text: 'Market change %',
+      text: chartMarketChange,
       left: 'center',
       show: props.showTitle,
     },
@@ -90,7 +89,7 @@ const marketChangeOptions: ComputedRef<EChartsOption> = computed(() => {
       ...echartsGridDefault,
     },
     legend: {
-      data: [CHART_MARKET_CHANGE],
+      data: [chartMarketChange],
       right: '5%',
       top: 0,
       selectedMode: false,
@@ -114,7 +113,7 @@ const marketChangeOptions: ComputedRef<EChartsOption> = computed(() => {
     yAxis: [
       {
         type: 'value',
-        name: CHART_MARKET_CHANGE,
+        name: chartMarketChange,
         splitLine: {
           show: false,
         },
@@ -139,7 +138,7 @@ const marketChangeOptions: ComputedRef<EChartsOption> = computed(() => {
     series: [
       {
         type: 'line',
-        name: CHART_MARKET_CHANGE,
+        name: chartMarketChange,
         showSymbol: false,
         color: settingsStore.chartTheme === 'dark' ? '#c2c2c2' : 'black',
         datasetIndex: 1,

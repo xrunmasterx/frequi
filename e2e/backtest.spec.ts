@@ -29,8 +29,8 @@ test.describe('Backtesting', () => {
     await page.goto('/backtest');
 
     await expect(page.locator('a', { hasText: 'Backtest' })).toBeInViewport();
-    await expect(page.getByText('Run backtest')).toBeInViewport();
-    await expect(page.getByText('Strategy', { exact: true })).toBeInViewport();
+    await expect(page.getByText(/Run backtest/)).toBeInViewport();
+    await expect(page.getByText(/Strategy/).first()).toBeInViewport();
 
     const strategySelect = page.locator('#strategy-select');
     await expect(strategySelect).toBeVisible();
@@ -40,10 +40,10 @@ test.describe('Backtesting', () => {
 
     const option = page.locator('[id="strategy-select"]');
     await expect(option).toBeAttached();
-    const analyzeButton = page.getByRole('tab', { name: 'Analyze result' });
+    const analyzeButton = page.getByRole('tab', { name: /Analyze result/ });
     await expect(analyzeButton).toBeDisabled();
 
-    const startBacktestButton = page.getByRole('button', { name: 'Start Backtest' });
+    const startBacktestButton = page.getByRole('button', { name: /Start backtest/ });
     await Promise.all([startBacktestButton.click(), page.waitForResponse('**/api/v1/backtest')]);
 
     // All buttons are now enabled

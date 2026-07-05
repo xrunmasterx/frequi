@@ -16,7 +16,15 @@ type CandleTooltipRow = {
   marker?: string;
 };
 
-export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
+type CandleTooltipCrosshairSelection = {
+  dataIndex: number;
+  timestamp: number;
+};
+
+export function useCandleChartTooltip(
+  chartOptions: Ref<EChartsOption>,
+  selectedCrosshair?: Ref<CandleTooltipCrosshairSelection | undefined>,
+) {
   const { t } = useAppI18n();
 
   function formatTooltipValue(value: unknown): string {
@@ -41,6 +49,41 @@ export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
       return undefined;
     }
     return chartOptions.value.series[seriesIndex];
+  }
+
+  function getDatasetRow(dataIndex: number): unknown[] | undefined {
+    const dataset = chartOptions.value.dataset;
+    const datasetOption = Array.isArray(dataset) ? dataset[0] : dataset;
+    const source =
+      datasetOption && typeof datasetOption === 'object' && 'source' in datasetOption
+        ? datasetOption.source
+        : undefined;
+
+    if (!Array.isArray(source)) {
+      return undefined;
+    }
+    const row = source[dataIndex];
+    return Array.isArray(row) ? row : undefined;
+  }
+
+  function normalizeTooltipParam(param: CandleTooltipParam): CandleTooltipParam {
+    const selection = selectedCrosshair?.value;
+    if (!selection) {
+      return param;
+    }
+
+    const selectedRow = getDatasetRow(selection.dataIndex);
+    if (!selectedRow) {
+      return param;
+    }
+
+    return {
+      ...param,
+      dataIndex: selection.dataIndex,
+      value: selectedRow as CandleTooltipParam['value'],
+      axisValue: selection.timestamp,
+      axisValueLabel: String(selection.timestamp),
+    };
   }
 
   function getTooltipEncodedDimension(
@@ -214,19 +257,31 @@ export function useCandleChartTooltip(chartOptions: Ref<EChartsOption>) {
     >${formatTooltipHtmlValue(echartsFormat.encodeHTML(row.value))}</span></div>`;
   }
 
+  function formatTooltipTimestamp(param: CandleTooltipParam): string {
+    const axisValueTimestamp = Number(param.axisValue);
+    if (Number.isFinite(axisValueTimestamp)) {
+      return timestampms(axisValueTimestamp);
+    }
+
+    const axisLabelTimestamp = Number(param.axisValueLabel);
+    if (Number.isFinite(axisLabelTimestamp)) {
+      return timestampms(axisLabelTimestamp);
+    }
+
+    return param.axisValueLabel ?? param.axisValue?.toString() ?? '';
+  }
+
   /** Main chandlechart tooltip formatter */
   function formatCandleTooltip(params: TooltipComponentFormatterCallbackParams): string {
     // console.log('tooltipParams', params[0].data[0], params);
-    const tooltipParams: CandleTooltipParam[] = Array.isArray(params) ? params : [params];
+    const tooltipParams: CandleTooltipParam[] = (Array.isArray(params) ? params : [params]).map(
+      normalizeTooltipParam,
+    );
     if (tooltipParams.length === 0) {
       return '';
     }
 
-    const timestamp =
-      tooltipParams[0].axisValueLabel ??
-      (typeof tooltipParams[0].axisValue === 'number'
-        ? timestampms(tooltipParams[0].axisValue)
-        : (tooltipParams[0].axisValue?.toString() ?? ''));
+    const timestamp = formatTooltipTimestamp(tooltipParams[0]);
 
     const groupedLines = new Map<string, CandleTooltipRow[]>();
     for (const param of tooltipParams) {

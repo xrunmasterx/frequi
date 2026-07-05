@@ -6,17 +6,19 @@ const props = defineProps<{
   periodicBreakdown: PeriodicBreakdown;
 }>();
 
+const { t } = useAppI18n();
+
 const periodicBreakdownSelections = computed(() => {
   const res = [
-    { value: 'day', label: 'Days' },
-    { value: 'week', label: 'Weeks' },
-    { value: 'month', label: 'Months' },
+    { value: 'day', label: t('bot.days') },
+    { value: 'week', label: t('bot.weeks') },
+    { value: 'month', label: t('bot.months') },
   ];
   if (props.periodicBreakdown.year) {
-    res.push({ value: 'year', label: 'Years' });
+    res.push({ value: 'year', label: t('webserver.backtest.years') });
   }
   if (props.periodicBreakdown.weekday) {
-    res.push({ value: 'weekday', label: 'Weekday' });
+    res.push({ value: 'weekday', label: t('webserver.backtest.weekday') });
   }
 
   return res;
@@ -35,16 +37,16 @@ type PeriodRow = {
   loses?: number;
 };
 
-const columns: TableColumn<PeriodRow>[] = [
-  { accessorKey: 'date', header: 'Date' },
-  { accessorKey: 'trades', header: 'Trades' },
-  { accessorKey: 'profit_abs', header: 'Total Profit' },
-  { accessorKey: 'profit_factor', header: 'Profit Factor' },
-  { accessorKey: 'wins', header: 'Wins' },
-  { accessorKey: 'draws', header: 'Draws' },
-  { accessorKey: 'losses', header: 'Losses' },
-  { id: 'win_rate', header: 'Win Rate' },
-];
+const columns = computed<TableColumn<PeriodRow>[]>(() => [
+  { accessorKey: 'date', header: t('webserver.backtest.date') },
+  { accessorKey: 'trades', header: t('bot.trades') },
+  { accessorKey: 'profit_abs', header: t('webserver.backtest.totalProfit') },
+  { accessorKey: 'profit_factor', header: t('webserver.backtest.profitFactor') },
+  { accessorKey: 'wins', header: t('webserver.backtest.wins') },
+  { accessorKey: 'draws', header: t('webserver.backtest.draws') },
+  { accessorKey: 'losses', header: t('webserver.backtest.losses') },
+  { id: 'win_rate', header: t('webserver.backtest.winRate') },
+]);
 </script>
 
 <template>

@@ -74,7 +74,7 @@ test.describe('Pairlists', () => {
     await expect(volumePairListButton).toBeInViewport();
     await volumePairListButton.click();
 
-    const resultsButton = page.getByRole('button', { name: 'Results' });
+    const resultsButton = page.getByRole('button', { name: /Results/ });
     // await expect(resultsButton).toHaveAttribute('value', 'Results');
     // await expect(resultsButton).toBeDisabled();
 
@@ -82,7 +82,7 @@ test.describe('Pairlists', () => {
     await expect(copyContainer).toBeVisible();
     await expect(copyContainer).toContainText('"method": "VolumePairList",');
 
-    const evaluateButton = page.locator('button >> text="Evaluate"');
+    const evaluateButton = page.getByRole('button', { name: /Evaluate/ });
 
     await Promise.all([
       evaluateButton.click(),

@@ -29,6 +29,7 @@ const props = withDefaults(
 );
 
 const settingsStore = useSettingsStore();
+const { t } = useAppI18n();
 
 use([
   DatasetComponent,
@@ -70,7 +71,7 @@ const losingTrades = computed(() => {
 const chartOptions = computed((): EChartsOption => {
   return {
     title: {
-      text: 'Trades durations',
+      text: t('webserver.backtest.tradeDurations'),
       left: 'center',
       show: props.showTitle,
     },
@@ -89,11 +90,11 @@ const chartOptions = computed((): EChartsOption => {
           config: {
             itemNameFormatter: (params) => {
               if (params.value === 0) {
-                return 'All trades';
+                return t('webserver.backtest.allTrades');
               } else if (params.value === 1) {
-                return 'Winning trades';
+                return t('webserver.backtest.winningTrades');
               } else if (params.value === 2) {
-                return 'Losing trades';
+                return t('webserver.backtest.losingTrades');
               }
             },
           },
@@ -113,7 +114,7 @@ const chartOptions = computed((): EChartsOption => {
     yAxis: [
       {
         type: 'value',
-        name: 'Trade duration',
+        name: t('webserver.backtest.tradeDuration'),
         splitArea: {
           show: true,
         },
@@ -128,11 +129,11 @@ const chartOptions = computed((): EChartsOption => {
           const statistics = params.data;
           return `
             <div>${echartsFormat.encodeHTML(params.name)}</div>
-            <div>Min: ${echartsFormat.encodeHTML(formatDuration(statistics[1]))}</div>
+            <div>${echartsFormat.encodeHTML(t('webserver.backtest.min'))}: ${echartsFormat.encodeHTML(formatDuration(statistics[1]))}</div>
             <div>Q1: ${echartsFormat.encodeHTML(formatDuration(statistics[2]))}</div>
-            <div>Median: ${echartsFormat.encodeHTML(formatDuration(statistics[3]))}</div>
+            <div>${echartsFormat.encodeHTML(t('webserver.backtest.median'))}: ${echartsFormat.encodeHTML(formatDuration(statistics[3]))}</div>
             <div>Q3: ${echartsFormat.encodeHTML(formatDuration(statistics[4]))}</div>
-            <div>Max: ${echartsFormat.encodeHTML(formatDuration(statistics[5]))}</div>
+            <div>${echartsFormat.encodeHTML(t('webserver.backtest.max'))}: ${echartsFormat.encodeHTML(formatDuration(statistics[5]))}</div>
           `;
         }
         return '';
@@ -147,19 +148,19 @@ const chartOptions = computed((): EChartsOption => {
           {
             min: 0,
             max: 0,
-            label: 'All Trades',
+            label: t('webserver.backtest.allTrades'),
             color: '#5470c6',
           },
           {
             min: 1,
             max: 1,
-            label: 'Winning Trades',
+            label: t('webserver.backtest.winningTrades'),
             color: '#12bb7b',
           },
           {
             min: 2,
             max: 2,
-            label: 'Losing Trades',
+            label: t('webserver.backtest.losingTrades'),
             color: '#ef5350',
           },
         ],
@@ -167,7 +168,7 @@ const chartOptions = computed((): EChartsOption => {
     ],
     series: [
       {
-        name: 'Trade durations',
+        name: t('webserver.backtest.tradeDurations'),
         type: 'boxplot',
         datasetId: 'allTradesBoxplot',
         colorBy: 'data',

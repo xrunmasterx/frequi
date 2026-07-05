@@ -30,10 +30,30 @@ export interface ChartMacdIndicatorPayload {
   signal: number;
 }
 
+export interface ChartSupertrendIndicatorPayload {
+  period: number;
+  multiplier: number;
+}
+
+export interface ChartQqeModIndicatorPayload {
+  rsi_length: number;
+  rsi_smoothing: number;
+  qqe_factor: number;
+  bollinger_length: number;
+  bollinger_multiplier: number;
+  secondary_rsi_length: number;
+  secondary_rsi_smoothing: number;
+  secondary_qqe_factor: number;
+  threshold: number;
+  source: string;
+}
+
 export interface ChartIndicatorPayload {
   ma?: number[];
   rsi?: number[];
   macd?: ChartMacdIndicatorPayload[];
+  supertrend?: ChartSupertrendIndicatorPayload[];
+  qqe_mod?: ChartQqeModIndicatorPayload[];
 }
 
 export interface ChartCandlesPayload {

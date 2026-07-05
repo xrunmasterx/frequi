@@ -27,18 +27,19 @@ describe('candle chart axis utilities', () => {
     expect(getTimeAxisDomain([[undefined, 62_100]], 0)).toBeUndefined();
   });
 
-  it('uses one visible linked time-axis pointer style', () => {
+  it('keeps native time-axis pointer active for tooltip data but visually hidden', () => {
     const axisPointer = createLinkedTimeAxisPointer();
 
     expect(axisPointer).toEqual({
+      show: true,
       label: { show: false },
       lineStyle: {
         color: '#cccccc',
-        opacity: 1,
+        opacity: 0,
         type: 'dashed',
-        width: 1,
+        width: 0,
       },
-      snap: true,
+      snap: false,
     });
   });
 

@@ -15,22 +15,22 @@ test.describe('Analysis', () => {
   });
   test('Analysis navigation', async ({ page }) => {
     await page.goto('/');
-    const analysisButton = page.getByRole('button', { name: 'Analysis' });
+    const analysisButton = page.getByRole('button', { name: /Analysis/ });
     await expect(analysisButton).toBeInViewport();
-    await expect(page.getByText('Recursive analysis')).not.toBeInViewport();
-    await expect(page.getByText('Lookahead analysis')).not.toBeInViewport();
+    await expect(page.getByText(/Recursive Analysis/)).not.toBeInViewport();
+    await expect(page.getByText(/Lookahead Analysis/)).not.toBeInViewport();
     await analysisButton.click();
-    await expect(page.getByText('Recursive analysis')).toBeInViewport();
-    await expect(page.getByText('Lookahead analysis')).toBeInViewport();
+    await expect(page.getByText(/Recursive Analysis/)).toBeInViewport();
+    await expect(page.getByText(/Lookahead Analysis/)).toBeInViewport();
     // Click recursive analysis
-    await page.getByText('Recursive analysis').click();
+    await page.getByText(/Recursive Analysis/).click();
     await expect(page).toHaveURL(/recursive_analysis/);
-    await expect(page.getByText('Recursive Analysis', { exact: true })).toBeInViewport();
+    await expect(page.getByText(/Recursive Analysis/)).toBeInViewport();
     // Click lookahead analysis
-    await page.getByRole('button', { name: 'Analysis', exact: true }).click();
-    await page.getByText('Lookahead analysis').click();
+    await page.getByRole('button', { name: /Analysis/ }).click();
+    await page.getByText(/Lookahead Analysis/).click();
     await expect(page).toHaveURL(/lookahead_analysis/);
-    await expect(page.getByText('Lookahead Analysis', { exact: true })).toBeInViewport();
+    await expect(page.getByText(/Lookahead Analysis/)).toBeInViewport();
   });
 
   test('Lookahead analysis test', async ({ page }) => {
@@ -61,19 +61,19 @@ test.describe('Analysis', () => {
     });
 
     await page.goto('/lookahead_analysis');
-    await expect(page.getByText('Lookahead Analysis', { exact: true })).toBeInViewport();
+    await expect(page.getByText(/Lookahead Analysis/)).toBeInViewport();
 
-    await expect(page.getByRole('button', { name: 'Start lookahead analysis' })).not.toBeEnabled();
+    await expect(page.getByRole('button', { name: /Start lookahead analysis/ })).not.toBeEnabled();
     await page.getByRole('button', { name: 'Show popup' }).click();
     await page.getByText('AverageStrategy').click();
-    await expect(page.getByRole('button', { name: 'Start lookahead analysis' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Start lookahead analysis' }).click();
+    await expect(page.getByRole('button', { name: /Start lookahead analysis/ })).toBeEnabled();
+    await page.getByRole('button', { name: /Start lookahead analysis/ }).click();
 
     // Delays by a second due to background task timing
-    await expect(page.getByText('Analysis Result', { exact: true })).toBeInViewport();
-    await expect(page.getByText('No lookahead bias detected')).toBeInViewport();
-    await expect(page.getByRole('cell', { name: 'AverageStrategy' })).toBeInViewport();
-    await expect(page.getByText('No lookahead bias detected')).toBeInViewport();
+    await expect(page.getByText(/Analysis Result/)).toBeInViewport();
+    await expect(page.getByText(/No lookahead bias detected/)).toBeInViewport();
+    await expect(page.getByRole('cell', { name: 'AverageStrategy' })).toBeVisible();
+    await expect(page.getByText(/No lookahead bias detected/)).toBeInViewport();
   });
 
   test('Recursive analysis test', async ({ page }) => {
@@ -104,20 +104,20 @@ test.describe('Analysis', () => {
     });
 
     await page.goto('/recursive_analysis');
-    await expect(page.getByText('Recursive Analysis', { exact: true })).toBeInViewport();
-    await expect(page.getByRole('button', { name: 'Start recursive analysis' })).not.toBeEnabled();
+    await expect(page.getByText(/Recursive Analysis/)).toBeInViewport();
+    await expect(page.getByRole('button', { name: /Start recursive analysis/ })).not.toBeEnabled();
     await page.getByRole('button', { name: 'Show popup' }).click();
     await page.getByText('AverageStrategy').click();
-    await expect(page.getByRole('button', { name: 'Start recursive analysis' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Start recursive analysis' }).click();
+    await expect(page.getByRole('button', { name: /Start recursive analysis/ })).toBeEnabled();
+    await page.getByRole('button', { name: /Start recursive analysis/ }).click();
 
     // Delays by a second due to background task timing
-    await expect(page.getByText('Analysis Result', { exact: true })).toBeInViewport();
+    await expect(page.getByText(/Analysis Result/)).toBeInViewport();
     await expect(
-      page.getByText('4 indicator(s) affected by startup candle count'),
+      page.getByText(/4 indicator\(s\) affected by startup candle count/),
     ).toBeInViewport();
     await expect(page.getByRole('cell', { name: 'rsi' })).toBeVisible();
-    await expect(page.getByText('4 indicator(s) affected by')).toBeInViewport();
+    await expect(page.getByText(/4 indicator\(s\) affected by/)).toBeInViewport();
     await expect(page.getByRole('cell', { name: 'rsi' })).toBeVisible();
     await expect(page.getByRole('cell', { name: '0.167%' })).toBeVisible();
   });

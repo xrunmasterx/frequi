@@ -9,6 +9,8 @@ const props = withDefaults(
   {},
 );
 
+const { t } = useAppI18n();
+
 const backtestResultStats = computed(() => {
   const values = {};
   Object.entries(props.backtestResults).forEach(([key, result]) => {
@@ -21,7 +23,7 @@ const backtestResultStats = computed(() => {
 });
 
 const backtestResultFields = computed(() => {
-  const res = [{ key: 'metric', label: 'Metric' }];
+  const res = [{ key: 'metric', label: t('common.metric') }];
   Object.entries(props.backtestResults).forEach(([key, value]) => {
     res.push({ key, label: value.metadata.strategyName });
   });
@@ -48,7 +50,7 @@ const tableColumns = computed(() => {
 <template>
   <div class="px-0 mw-full">
     <div class="flex justify-center">
-      <h3 class="font-bold text-3xl">Backtest-result comparison</h3>
+      <h3 class="font-bold text-3xl">{{ t('webserver.backtest.comparisonTitle') }}</h3>
     </div>
     <div class="flex flex-col text-start ms-0 me-2 gap-2">
       <div class="flex flex-col flex-xl-row">

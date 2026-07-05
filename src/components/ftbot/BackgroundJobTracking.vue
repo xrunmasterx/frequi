@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const botStore = useBotStore();
+const { t } = useAppI18n();
 const runningJobs = computed(() => botStore.activeBot.backgroundJobs);
 
 const jobCategoryIcons: Record<string, string> = {
@@ -71,6 +72,7 @@ const jobCategoryIcons: Record<string, string> = {
       color="neutral"
       class="ms-auto"
       icon="mdi:delete"
+      :title="t('webserver.backgroundJobs.clear')"
       @click="botStore.activeBot.clearBgJobs()"
     />
   </div>

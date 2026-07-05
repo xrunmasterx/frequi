@@ -2,6 +2,7 @@
 import type { LookaheadAnalysisPayload, LookaheadResult } from '@/types';
 
 const botStore = useBotStore();
+const { t } = useAppI18n();
 
 const running = ref(false);
 const result = ref<LookaheadResult | null>(null);
@@ -15,7 +16,7 @@ async function startAnalysis(payload: LookaheadAnalysisPayload) {
     const { job_id: jobId } = await botStore.activeBot.startLookaheadAnalysis(payload);
     const status = await botStore.activeBot.pollBgJob(jobId, 'lookahead_analysis');
     if (status.status === 'failed') {
-      statusMessage.value = status.error || 'Lookahead analysis failed';
+      statusMessage.value = status.error || t('webserver.analysis.lookaheadFailed');
       showAlert(statusMessage.value, 'error');
       return;
     }
@@ -24,12 +25,12 @@ async function startAnalysis(payload: LookaheadAnalysisPayload) {
       result.value = analysis.result;
       statusMessage.value = analysis.status_msg;
     } else {
-      statusMessage.value = analysis.status_msg || 'Lookahead analysis failed';
+      statusMessage.value = analysis.status_msg || t('webserver.analysis.lookaheadFailed');
       showAlert(statusMessage.value, 'error');
     }
   } catch (error) {
     console.error(error);
-    showAlert('Failed to run lookahead analysis', 'error');
+    showAlert(t('webserver.analysis.failedLookahead'), 'error');
   } finally {
     running.value = false;
   }
@@ -39,10 +40,14 @@ async function startAnalysis(payload: LookaheadAnalysisPayload) {
 <template>
   <div class="px-1 mx-auto w-full max-w-4xl lg:max-w-7xl">
     <BackgroundJobTracking class="mb-4" />
-    <DraggableContainer header="Lookahead Analysis" class="mx-1 p-4">
+    <DraggableContainer :header="t('webserver.analysis.lookaheadTitle')" class="mx-1 p-4">
       <LookaheadAnalysisForm :running="running" @start="startAnalysis" />
     </DraggableContainer>
-    <DraggableContainer v-if="result" header="Analysis Result" class="mx-1 mt-4 p-4">
+    <DraggableContainer
+      v-if="result"
+      :header="t('webserver.analysis.analysisResult')"
+      class="mx-1 mt-4 p-4"
+    >
       <LookaheadAnalysisResults :result="result" />
     </DraggableContainer>
   </div>

@@ -4,6 +4,7 @@ import { useSortable, moveArrayElement } from '@vueuse/integrations/useSortable'
 
 const botStore = useBotStore();
 const pairlistStore = usePairlistConfigStore();
+const { t } = useAppI18n();
 
 const availablePairlists = ref<Pairlist[]>([]);
 const pairlistConfigsEl = ref<HTMLElement | null>(null);
@@ -78,103 +79,114 @@ if (pairlistStore.whitelist.length > 0) {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 lg:grid-cols-[auto_1fr_auto] px-3 mb-3 gap-3 w-full">
-    <ul
-      ref="availablePairlistsEl"
-      class="divide-y border-x border-neutral-500 rounded-sm border-y divide-solid divide-neutral-500 min-w-72"
-    >
-      <!-- Available pairlists-->
-      <li
-        v-for="pairlist in availablePairlists"
-        :key="pairlist.name"
-        :class="{
-          'no-drag text-gray-500 hover:cursor-default':
-            pairlistStore.config.pairlists.length === 0 && !pairlist.is_pairlist_generator,
-        }"
-        class="flex text-start items-center py-2 px-3 hover:cursor-grab [.dragging]:bg-neutral-100 dark:[.dragging]:bg-neutral-900 [.dragging]:border [.dragging]:border-neutral-500"
+  <div>
+    <h2 class="px-3 mb-2 text-2xl font-bold">{{ t('webserver.pairlistConfig.title') }}</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-[auto_1fr_auto] px-3 mb-3 gap-3 w-full">
+      <ul
+        ref="availablePairlistsEl"
+        class="divide-y border-x border-neutral-500 rounded-sm border-y divide-solid divide-neutral-500 min-w-72"
       >
-        <div class="flex grow items-start flex-col">
-          <span class="font-bold">{{ pairlist.name }}</span>
-          <span class="text-sm text-muted">{{ pairlist.description }}</span>
-        </div>
-        <UButton
-          color="neutral"
-          variant="ghost"
-          :disabled="pairlistStore.config.pairlists.length === 0 && !pairlist.is_pairlist_generator"
-          icon="mdi:arrow-right-bold-box-outline"
-          @click="pairlistStore.addToConfig(pairlist, pairlistStore.config.pairlists.length)"
-        />
-      </li>
-    </ul>
-    <div class="flex flex-col">
-      <PairlistConfigActions />
-      <div class="border rounded-sm border-neutral-500 p-2 mb-2">
-        <div class="flex items-center gap-2 my-2">
-          <span class="col-auto">Stake currency: </span>
-          <UInput v-model="pairlistStore.stakeCurrency" />
-        </div>
+        <!-- Available pairlists-->
+        <li
+          v-for="pairlist in availablePairlists"
+          :key="pairlist.name"
+          :class="{
+            'no-drag text-gray-500 hover:cursor-default':
+              pairlistStore.config.pairlists.length === 0 && !pairlist.is_pairlist_generator,
+          }"
+          class="flex text-start items-center py-2 px-3 hover:cursor-grab [.dragging]:bg-neutral-100 dark:[.dragging]:bg-neutral-900 [.dragging]:border [.dragging]:border-neutral-500"
+        >
+          <div class="flex grow items-start flex-col">
+            <span class="font-bold">{{ pairlist.name }}</span>
+            <span class="text-sm text-muted">{{ pairlist.description }}</span>
+          </div>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            :disabled="
+              pairlistStore.config.pairlists.length === 0 && !pairlist.is_pairlist_generator
+            "
+            icon="mdi:arrow-right-bold-box-outline"
+            @click="pairlistStore.addToConfig(pairlist, pairlistStore.config.pairlists.length)"
+          />
+        </li>
+      </ul>
+      <div class="flex flex-col">
+        <PairlistConfigActions />
+        <div class="border rounded-sm border-neutral-500 p-2 mb-2">
+          <div class="flex items-center gap-2 my-2">
+            <span class="col-auto">{{ t('webserver.pairlistConfig.stakeCurrency') }}</span>
+            <UInput v-model="pairlistStore.stakeCurrency" />
+          </div>
 
-        <div class="mb-2 border rounded-sm border-neutral-500 p-2 text-start">
-          <BaseCheckbox v-model="pairlistStore.customExchange" class="mb-2">
-            Custom Exchange
-          </BaseCheckbox>
-          <Transition name="fade">
-            <ExchangeSelect
-              v-if="pairlistStore.customExchange"
-              v-model="pairlistStore.selectedExchange"
-            />
-          </Transition>
+          <div class="mb-2 border rounded-sm border-neutral-500 p-2 text-start">
+            <BaseCheckbox v-model="pairlistStore.customExchange" class="mb-2">
+              {{ t('webserver.pairlistConfig.customExchange') }}
+            </BaseCheckbox>
+            <Transition name="fade">
+              <ExchangeSelect
+                v-if="pairlistStore.customExchange"
+                v-model="pairlistStore.selectedExchange"
+              />
+            </Transition>
+          </div>
+        </div>
+        <PairlistConfigBlacklist />
+        <UAlert
+          v-if="
+            pairlistStore.config.pairlists.length > 0 && !pairlistStore.firstPairlistIsGenerator
+          "
+          class="my-2"
+          color="warning"
+          :title="t('webserver.pairlistConfig.invalidConfiguration')"
+          :description="t('webserver.pairlistConfig.invalidConfigurationDescription')"
+        />
+        <div
+          ref="pairlistConfigsEl"
+          class="flex flex-col grow relative border rounded-sm border-neutral-500 p-1 gap-2 min-h-32"
+          :class="{ empty: configEmpty }"
+          :data-empty-label="t('webserver.pairlistConfig.dragPairlistHere')"
+        >
+          <PairlistConfigItem
+            v-for="(pairlist, i) in pairlistStore.config.pairlists"
+            :key="pairlist.id"
+            v-model="pairlistStore.config.pairlists[i]!"
+            :index="i"
+            @remove="pairlistStore.removeFromConfig"
+          />
         </div>
       </div>
-      <PairlistConfigBlacklist />
-      <UAlert
-        v-if="pairlistStore.config.pairlists.length > 0 && !pairlistStore.firstPairlistIsGenerator"
-        class="my-2"
-        color="warning"
-        title="Invalid configuration"
-        description="The first entry in the pairlist must be a Generating pairlist, like StaticPairList or
-          VolumePairList."
-      />
-      <div
-        ref="pairlistConfigsEl"
-        class="flex flex-col grow relative border rounded-sm border-neutral-500 p-1 gap-2 min-h-32"
-        :class="{ empty: configEmpty }"
-      >
-        <PairlistConfigItem
-          v-for="(pairlist, i) in pairlistStore.config.pairlists"
-          :key="pairlist.id"
-          v-model="pairlistStore.config.pairlists[i]!"
-          :index="i"
-          @remove="pairlistStore.removeFromConfig"
-        />
-      </div>
-    </div>
-    <div class="flex flex-col w-full min-w-72">
-      <USegmentedControl
-        v-model="selectedView"
-        class="mb-2"
-        label-key="value"
-        value-key="value"
-        size="md"
-        :items="[
-          { value: 'Config' },
-          { value: 'Results', disabled: pairlistStore.whitelist.length === 0 },
-        ]"
-        disabled-key="disabled"
-      >
-      </USegmentedControl>
-      <div class="relative overflow-auto">
-        <CopyableTextfield
-          v-if="selectedView === 'Config'"
-          class="w-full"
-          :content="pairlistStore.configJSON"
-          :is-valid="pairlistStore.pairlistValid"
-        />
-        <CopyableTextfield
-          v-if="selectedView === 'Results'"
-          class="w-full"
-          :content="pairlistStore.whitelist"
-        />
+      <div class="flex flex-col w-full min-w-72">
+        <USegmentedControl
+          v-model="selectedView"
+          class="mb-2"
+          value-key="value"
+          size="md"
+          :items="[
+            { value: 'Config', label: t('webserver.pairlistConfig.config') },
+            {
+              value: 'Results',
+              label: t('webserver.pairlistConfig.results'),
+              disabled: pairlistStore.whitelist.length === 0,
+            },
+          ]"
+          label-key="label"
+          disabled-key="disabled"
+        >
+        </USegmentedControl>
+        <div class="relative overflow-auto">
+          <CopyableTextfield
+            v-if="selectedView === 'Config'"
+            class="w-full"
+            :content="pairlistStore.configJSON"
+            :is-valid="pairlistStore.pairlistValid"
+          />
+          <CopyableTextfield
+            v-if="selectedView === 'Results'"
+            class="w-full"
+            :content="pairlistStore.whitelist"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -182,7 +194,7 @@ if (pairlistStore.whitelist.length > 0) {
 
 <style lang="scss" scoped>
 .empty:after {
-  content: 'Drag pairlist here';
+  content: attr(data-empty-label);
   position: absolute;
   align-self: center;
   font-size: 1.1rem;
