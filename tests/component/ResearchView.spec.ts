@@ -113,10 +113,28 @@ function mountResearchView(pinia: ReturnType<typeof createPinia>) {
     global: {
       plugins: [pinia],
       stubs: {
+        Button: {
+          props: ['disabled', 'icon'],
+          emits: ['click'],
+          template:
+            '<button :disabled="disabled" type="button" @click="$emit(\'click\', $event)"><slot /></button>',
+        },
         CandleChart: {
           name: 'CandleChart',
           props: ['dataset', 'trades', 'plotConfig'],
           template: '<div data-test="candle-chart" />',
+        },
+        Input: {
+          props: ['modelValue'],
+          emits: ['update:modelValue'],
+          template:
+            '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+        },
+        Select: {
+          props: ['modelValue', 'items'],
+          emits: ['update:modelValue'],
+          template:
+            '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
         },
         UButton: {
           props: ['disabled', 'icon'],
@@ -154,10 +172,29 @@ describe('ResearchView', () => {
     expect(wrapper.text()).toContain('Research');
     expect(wrapper.text()).toContain('Instrument');
     expect(wrapper.text()).toContain('Run backtest');
+    expect(wrapper.find('[data-test="bot-select"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="instrument-select"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="timeframe-select"]').exists()).toBe(true);
+    expect(wrapper.find<HTMLSelectElement>('[data-test="timeframe-select"]').element.value).toBe(
+      '1d',
+    );
+    expect(wrapper.find('[data-test="adjustment-select"]').exists()).toBe(true);
+    expect(wrapper.find<HTMLSelectElement>('[data-test="adjustment-select"]').element.value).toBe(
+      'raw',
+    );
+    expect(wrapper.find('[data-test="refresh-chart"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="sma-fast"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="sma-slow"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="initial-cash"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="run-backtest"]').exists()).toBe(true);
     expect(wrapper.text()).not.toContain('Force Entry');
     expect(wrapper.text()).not.toContain('Force Exit');
     expect(wrapper.text()).not.toContain('Start Trading');
     expect(wrapper.text()).not.toContain('Stop Trading');
+    expect(wrapper.text()).not.toContain('Orders');
+    expect(wrapper.text()).not.toContain('Account');
+    expect(wrapper.text()).not.toContain('Cancel open order');
+    expect(wrapper.text()).not.toContain('Forceexit');
   });
 
   it('loads bots and instruments on mount and requests a chart', async () => {
