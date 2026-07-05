@@ -42,7 +42,7 @@ export interface ResearchChartPayload {
   timeframe: string;
   limit?: number;
   timerange?: string | null;
-  adjustment?: string | null;
+  adjustment?: 'raw' | 'qfq' | 'hfq';
   watch_indicators?: ChartIndicatorPayload;
 }
 
@@ -59,10 +59,15 @@ export interface ResearchBacktestPayload {
   };
 }
 
+export interface ResearchBacktestCapability {
+  kind: 'research_backtest';
+  execution: 'none';
+}
+
 export interface ResearchBacktestResult {
   instrument: string;
   strategy: string;
-  capability: string;
+  capability: ResearchBacktestCapability;
   trades: Record<string, unknown>[];
   equity_curve: Record<string, unknown>[];
   metrics: Record<string, unknown>;

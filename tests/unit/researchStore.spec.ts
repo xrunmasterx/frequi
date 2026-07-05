@@ -37,7 +37,7 @@ function botProfile(): ResearchBotProfile {
 
 function instrument(): ResearchInstrument {
   return {
-    key: 'a_share:SSE:600519',
+    key: '600519.SH',
     market: 'a_share',
     venue: 'SSE',
     symbol: '600519',
@@ -50,7 +50,7 @@ function instrument(): ResearchInstrument {
 function chartResponse(): ResearchChartResponse {
   return {
     strategy: 'ResearchStrategy',
-    pair: 'a_share:SSE:600519',
+    pair: '600519.SH',
     timeframe: '1d',
     timeframe_ms: 86400000,
     chart_timeframe: '1d',
@@ -122,7 +122,7 @@ describe('research store', () => {
       params: { bot_id: 'a-share-research' },
     });
     expect(store.instruments).toEqual([instrument()]);
-    expect(store.selectedInstrument).toBe('a_share:SSE:600519');
+    expect(store.selectedInstrument).toBe('600519.SH');
   });
 
   it('does not replace an existing selected instrument when loading instruments', async () => {
@@ -141,7 +141,7 @@ describe('research store', () => {
   it('stores chart data from chart candles endpoint', async () => {
     const payload: ResearchChartPayload = {
       bot_id: 'a-share-research',
-      instrument: 'a_share:SSE:600519',
+      instrument: '600519.SH',
       timeframe: '1d',
       limit: 120,
       timerange: null,
@@ -162,15 +162,15 @@ describe('research store', () => {
   it('stores backtest result from backtest endpoint', async () => {
     const payload: ResearchBacktestPayload = {
       bot_id: 'a-share-research',
-      instrument: 'a_share:SSE:600519',
+      instrument: '600519.SH',
       timeframe: '1d',
       initial_cash: 100000,
       strategy: { type: 'sma_cross', fast: 5, slow: 20 },
     };
     const result: ResearchBacktestResult = {
-      instrument: 'a_share:SSE:600519',
+      instrument: '600519.SH',
       strategy: 'sma_cross',
-      capability: 'backtest',
+      capability: { kind: 'research_backtest', execution: 'none' },
       trades: [{ id: 1 }],
       equity_curve: [{ date: '2026-01-01', equity: 100000 }],
       metrics: { total_return: 0.12 },
