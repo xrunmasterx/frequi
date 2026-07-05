@@ -187,6 +187,12 @@ export interface ChartSeriesMeta {
   provisional: boolean;
 }
 
+export interface ChartLayerPoint {
+  timestamp: number;
+  label?: string | null;
+  payload?: Record<string, unknown>;
+}
+
 export interface ChartLayerMeta {
   id: string;
   source: ChartLayerSource;
@@ -195,6 +201,7 @@ export interface ChartLayerMeta {
   timeframe?: string | null;
   alignment?: string | null;
   series: ChartSeriesMeta[];
+  points?: ChartLayerPoint[];
   warnings: string[];
 }
 

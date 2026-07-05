@@ -1,12 +1,8 @@
 import type { EChartsOption, SeriesOption, TooltipComponentFormatterCallbackParams } from 'echarts';
 import type { Ref } from 'vue';
 import { format as echartsFormat } from 'echarts';
-import type { ChartResponseMeta } from '@/types/candleTypes';
-import {
-  getSeriesMetaByColumn,
-  getSeriesSourceLabel,
-  getSeriesTooltipGroup,
-} from '@/utils/charts/chartSeriesMeta';
+import type { ChartLayerSource, ChartResponseMeta } from '@/types/candleTypes';
+import { getSeriesMetaByColumn, getSeriesSourceLabel } from '@/utils/charts/chartSeriesMeta';
 
 type CandleTooltipParam = Exclude<
   TooltipComponentFormatterCallbackParams,
@@ -22,6 +18,16 @@ type CandleTooltipRow = {
   marker?: string;
 };
 
+type CandleTooltipGroupInfo = {
+  title: string;
+  source?: ChartLayerSource;
+};
+
+type CandleTooltipGroup = CandleTooltipGroupInfo & {
+  lines: CandleTooltipRow[];
+  firstIndex: number;
+};
+
 type CandleTooltipCrosshairSelection = {
   dataIndex: number;
   timestamp: number;
@@ -34,6 +40,24 @@ type CandleTooltipSeriesOption = SeriesOption & {
 type CandleTooltipDatasetOption = {
   meta?: ChartResponseMeta | null;
   source?: unknown;
+};
+
+const TOOLTIP_SOURCE_PRIORITY: Record<ChartLayerSource, number> = {
+  decision_snapshot: 0,
+  strategy: 1,
+  watch: 2,
+  market: 3,
+  execution: 4,
+  recomputed: 5,
+};
+
+const DECISION_SNAPSHOT_GROUP_TITLE = 'Bot Decision';
+
+const DECISION_SNAPSHOT_PAYLOAD_LABELS: Record<string, string> = {
+  decision: 'Decision',
+  decision_time: 'Decision Time',
+  strategy: 'Strategy',
+  snapshot_type: 'Snapshot Type',
 };
 
 export function useCandleChartTooltip(
@@ -190,16 +214,159 @@ export function useCandleChartTooltip(
     return param.seriesName ?? '';
   }
 
-  function getTooltipGroupTitle(param: CandleTooltipParam): string {
+  function getTooltipSeriesLayer(
+    chartMeta: ChartResponseMeta | null | undefined,
+    column: string,
+  ): ChartResponseMeta['layers'][number] | undefined {
+    for (const layer of chartMeta?.layers ?? []) {
+      if (layer.series.some((series) => series.column === column)) {
+        return layer;
+      }
+    }
+    return undefined;
+  }
+
+  function getTooltipGroupInfo(param: CandleTooltipParam): CandleTooltipGroupInfo {
     if (param.seriesType === 'candlestick') {
-      return getTooltipSectionTitle(param.seriesIndex);
+      return { title: getTooltipSectionTitle(param.seriesIndex) };
     }
     const chartMeta = getChartResponseMeta();
     const column = getTooltipSeriesColumn(param);
-    if (chartMeta && column && getSeriesMetaByColumn(chartMeta, column)) {
-      return getSeriesTooltipGroup(chartMeta, column);
+    const layer = column ? getTooltipSeriesLayer(chartMeta, column) : undefined;
+    if (layer) {
+      return {
+        title:
+          layer.source === 'decision_snapshot' ? DECISION_SNAPSHOT_GROUP_TITLE : layer.label,
+        source: layer.source,
+      };
     }
-    return getTooltipSectionTitle(param.seriesIndex);
+    return { title: getTooltipSectionTitle(param.seriesIndex) };
+  }
+
+  function getTooltipGroupPriority(group: CandleTooltipGroup): number {
+    return group.source ? TOOLTIP_SOURCE_PRIORITY[group.source] : Number.POSITIVE_INFINITY;
+  }
+
+  function isRenderableTooltipValue(value: unknown): boolean {
+    return value !== null && value !== undefined && value !== '';
+  }
+
+  function formatDecisionSnapshotPointValue(value: unknown): string {
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return formatTooltipValue(value);
+  }
+
+  function appendDecisionSnapshotPayloadRows(rows: CandleTooltipRow[], payload: Record<string, unknown>) {
+    for (const key of ['decision', 'decision_time', 'strategy', 'snapshot_type']) {
+      const value = payload[key];
+      if (isRenderableTooltipValue(value)) {
+        rows.push({
+          label: DECISION_SNAPSHOT_PAYLOAD_LABELS[key],
+          value: formatDecisionSnapshotPointValue(value),
+        });
+      }
+    }
+
+    for (const sectionKey of ['values', 'context']) {
+      const sectionValue = payload[sectionKey];
+      if (sectionValue && typeof sectionValue === 'object' && !Array.isArray(sectionValue)) {
+        for (const [key, value] of Object.entries(sectionValue)) {
+          if (isRenderableTooltipValue(value)) {
+            rows.push({
+              label: key,
+              value: formatDecisionSnapshotPointValue(value),
+            });
+          }
+        }
+      } else if (isRenderableTooltipValue(sectionValue)) {
+        rows.push({
+          label: sectionKey,
+          value: formatDecisionSnapshotPointValue(sectionValue),
+        });
+      }
+    }
+  }
+
+  function formatDecisionSnapshotPointRows(timestamp: number): CandleTooltipRow[] {
+    const rows: CandleTooltipRow[] = [];
+    for (const layer of getChartResponseMeta()?.layers ?? []) {
+      if (layer.source !== 'decision_snapshot') {
+        continue;
+      }
+      for (const point of layer.points ?? []) {
+        if (point.timestamp !== timestamp || !point.payload) {
+          continue;
+        }
+        appendDecisionSnapshotPayloadRows(rows, point.payload);
+      }
+    }
+    return rows;
+  }
+
+  function sortMetadataGroupsInLegacySlots(groups: CandleTooltipGroup[]): CandleTooltipGroup[] {
+    const metadataGroups = groups
+      .filter((group) => group.source)
+      .sort(
+        (left, right) =>
+          getTooltipGroupPriority(left) - getTooltipGroupPriority(right) ||
+          left.firstIndex - right.firstIndex,
+      );
+    let metadataGroupIndex = 0;
+    return groups.map((group) => {
+      if (!group.source) {
+        return group;
+      }
+      const sortedGroup = metadataGroups[metadataGroupIndex];
+      metadataGroupIndex += 1;
+      return sortedGroup;
+    });
+  }
+
+  function getTooltipPointTimestamp(tooltipParams: CandleTooltipParam[]): number | undefined {
+    const selectionTimestamp = selectedCrosshair?.value?.timestamp;
+    if (Number.isFinite(selectionTimestamp)) {
+      return selectionTimestamp;
+    }
+
+    for (const param of tooltipParams) {
+      const axisValueTimestamp = Number(param.axisValue);
+      if (Number.isFinite(axisValueTimestamp)) {
+        return axisValueTimestamp;
+      }
+      if (Array.isArray(param.value)) {
+        const valueTimestamp = Number(param.value[0]);
+        if (Number.isFinite(valueTimestamp)) {
+          return valueTimestamp;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  function appendDecisionSnapshotPointGroup(
+    groupedLines: Map<string, CandleTooltipGroup>,
+    tooltipParams: CandleTooltipParam[],
+  ) {
+    const timestamp = getTooltipPointTimestamp(tooltipParams);
+    if (timestamp === undefined) {
+      return;
+    }
+
+    const lines = formatDecisionSnapshotPointRows(timestamp);
+    if (lines.length === 0) {
+      return;
+    }
+
+    const tooltipGroup = groupedLines.get(DECISION_SNAPSHOT_GROUP_TITLE) ?? {
+      title: DECISION_SNAPSHOT_GROUP_TITLE,
+      source: 'decision_snapshot',
+      lines: [],
+      firstIndex: tooltipParams.length,
+    };
+    tooltipGroup.lines.push(...lines);
+    groupedLines.set(DECISION_SNAPSHOT_GROUP_TITLE, tooltipGroup);
   }
 
   /**
@@ -356,21 +523,31 @@ export function useCandleChartTooltip(
 
     const timestamp = formatTooltipTimestamp(tooltipParams[0]);
 
-    const groupedLines = new Map<string, CandleTooltipRow[]>();
-    for (const param of tooltipParams) {
+    const groupedLines = new Map<string, CandleTooltipGroup>();
+    tooltipParams.forEach((param, paramIndex) => {
       const lines = formatTooltipLine(param);
       if (lines.length === 0) {
-        continue;
+        return;
       }
 
-      const sectionTitle = getTooltipGroupTitle(param);
-      const sectionLines = groupedLines.get(sectionTitle) ?? [];
-      sectionLines.push(...lines);
-      groupedLines.set(sectionTitle, sectionLines);
-    }
+      const groupInfo = getTooltipGroupInfo(param);
+      const tooltipGroup = groupedLines.get(groupInfo.title) ?? {
+        ...groupInfo,
+        lines: [],
+        firstIndex: paramIndex,
+      };
+      tooltipGroup.lines.push(...lines);
+      groupedLines.set(groupInfo.title, tooltipGroup);
+    });
+    appendDecisionSnapshotPointGroup(groupedLines, tooltipParams);
 
-    const sections = Array.from(groupedLines.entries())
-      .map(([title, lines], index) => {
+    const tooltipGroups = Array.from(groupedLines.values());
+    const sortedTooltipGroups = tooltipGroups.some((group) => group.source === 'decision_snapshot')
+      ? sortMetadataGroupsInLegacySlots(tooltipGroups)
+      : tooltipGroups;
+
+    const sections = sortedTooltipGroups
+      .map(({ title, lines }, index) => {
         const titleHtml =
           title === t('chart.legendVolume')
             ? ''

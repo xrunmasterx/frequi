@@ -328,6 +328,584 @@ describe('useCandleChartTooltip', () => {
     expect(html).toContain('RSI(14) - Watch');
   });
 
+  it('renders decision snapshot metadata before strategy and watch groups', () => {
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'strategy.overlay',
+          source: 'strategy',
+          status: 'ok',
+          label: 'Strategy Output',
+          series: [
+            {
+              column: 'strategy_1h_rsi',
+              label: 'RSI - Strategy Output - TestStrategy',
+              source: 'strategy',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'watch.indicators',
+          source: 'watch',
+          status: 'ok',
+          label: 'Watch Indicators',
+          series: [
+            {
+              column: 'watch_rsi14',
+              label: 'RSI(14) - Watch',
+              source: 'watch',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'decision.snapshot',
+          source: 'decision_snapshot',
+          status: 'ok',
+          label: 'Decision Snapshot',
+          series: [
+            {
+              column: 'decision_action',
+              label: 'Decision action',
+              source: 'decision_snapshot',
+              kind: 'line',
+              panel: 'Decision',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [],
+        meta,
+      },
+      series: [
+        {
+          name: 'strategy_1h_rsi',
+          type: 'line',
+          seriesColumn: 'strategy_1h_rsi',
+          yAxisIndex: 2,
+          encode: {
+            y: 1,
+          },
+        },
+        {
+          name: 'watch_rsi14',
+          type: 'line',
+          seriesColumn: 'watch_rsi14',
+          yAxisIndex: 2,
+          encode: {
+            y: 2,
+          },
+        },
+        {
+          name: 'decision_action',
+          type: 'line',
+          seriesColumn: 'decision_action',
+          yAxisIndex: 3,
+          encode: {
+            y: 3,
+          },
+        },
+      ],
+      yAxis: [{}, {}, { name: 'RSI' }, { name: 'Decision' }],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'strategy_1h_rsi',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [1],
+        },
+        value: [1_782_698_400_000, 61, 44, 'enter_long'],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 1,
+        seriesName: 'watch_rsi14',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [2],
+        },
+        value: [1_782_698_400_000, 61, 44, 'enter_long'],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 2,
+        seriesName: 'decision_action',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [3],
+        },
+        value: [1_782_698_400_000, 61, 44, 'enter_long'],
+      },
+    ] as never);
+
+    expect(html).toContain('Bot Decision');
+    expect(html.indexOf('Bot Decision')).toBeLessThan(html.indexOf('Strategy Output'));
+    expect(html.indexOf('Strategy Output')).toBeLessThan(html.indexOf('Watch Indicators'));
+    expect(html).toContain('Decision action');
+    expect(html).toContain('enter_long');
+  });
+
+  it('keeps candle group before prioritized decision snapshot metadata groups', () => {
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'strategy.overlay',
+          source: 'strategy',
+          status: 'ok',
+          label: 'Strategy Output',
+          series: [
+            {
+              column: 'strategy_1h_rsi',
+              label: 'RSI - Strategy Output - TestStrategy',
+              source: 'strategy',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'watch.indicators',
+          source: 'watch',
+          status: 'ok',
+          label: 'Watch Indicators',
+          series: [
+            {
+              column: 'watch_rsi14',
+              label: 'RSI(14) - Watch',
+              source: 'watch',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'decision.snapshot',
+          source: 'decision_snapshot',
+          status: 'ok',
+          label: 'Decision Snapshot',
+          series: [
+            {
+              column: 'decision_action',
+              label: 'Decision action',
+              source: 'decision_snapshot',
+              kind: 'line',
+              panel: 'Decision',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [],
+        meta,
+      },
+      series: [
+        {
+          name: 'Candles',
+          type: 'candlestick',
+          yAxisIndex: 0,
+          encode: {
+            y: [1, 4, 3, 2],
+          },
+        },
+        {
+          name: 'strategy_1h_rsi',
+          type: 'line',
+          seriesColumn: 'strategy_1h_rsi',
+          yAxisIndex: 2,
+          encode: {
+            y: 5,
+          },
+        },
+        {
+          name: 'watch_rsi14',
+          type: 'line',
+          seriesColumn: 'watch_rsi14',
+          yAxisIndex: 2,
+          encode: {
+            y: 6,
+          },
+        },
+        {
+          name: 'decision_action',
+          type: 'line',
+          seriesColumn: 'decision_action',
+          yAxisIndex: 3,
+          encode: {
+            y: 7,
+          },
+        },
+      ],
+      yAxis: [{}, {}, { name: 'RSI' }, { name: 'Decision' }],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: 1_782_698_400_000,
+        axisValueLabel: '1782698400000',
+        marker: '<span></span>',
+        encode: {
+          y: [1, 4, 3, 2],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 61, 44, 'enter_long'],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 1,
+        seriesName: 'strategy_1h_rsi',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [5],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 61, 44, 'enter_long'],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 2,
+        seriesName: 'watch_rsi14',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [6],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 61, 44, 'enter_long'],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 3,
+        seriesName: 'decision_action',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [7],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 61, 44, 'enter_long'],
+      },
+    ] as never);
+
+    expect(html.indexOf('Candles')).toBeLessThan(html.indexOf('Bot Decision'));
+    expect(html.indexOf('Bot Decision')).toBeLessThan(html.indexOf('Strategy Output'));
+    expect(html.indexOf('Strategy Output')).toBeLessThan(html.indexOf('Watch Indicators'));
+  });
+
+  it('renders matching decision snapshot point evidence without a decision series param', () => {
+    const timestamp = 1_782_698_400_000;
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'strategy.overlay',
+          source: 'strategy',
+          status: 'ok',
+          label: 'Strategy Output',
+          series: [
+            {
+              column: 'strategy_1h_rsi',
+              label: 'RSI - Strategy Output - TestStrategy',
+              source: 'strategy',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'watch.indicators',
+          source: 'watch',
+          status: 'ok',
+          label: 'Watch Indicators',
+          series: [
+            {
+              column: 'watch_rsi14',
+              label: 'RSI(14) - Watch',
+              source: 'watch',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'decision.snapshot',
+          source: 'decision_snapshot',
+          status: 'ok',
+          label: 'Decision Snapshot',
+          series: [],
+          points: [
+            {
+              timestamp,
+              label: 'decision',
+              payload: {
+                decision: 'enter_long',
+                decision_time: '2026-06-29T02:00:00Z',
+                strategy: 'TestStrategy',
+                snapshot_type: 'live',
+                values: {
+                  confidence: 0.87,
+                },
+                context: {
+                  market_regime: 'trend',
+                },
+              },
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [],
+        meta,
+      },
+      series: [
+        {
+          name: 'Candles',
+          type: 'candlestick',
+          yAxisIndex: 0,
+          encode: {
+            y: [1, 4, 3, 2],
+          },
+        },
+        {
+          name: 'strategy_1h_rsi',
+          type: 'line',
+          seriesColumn: 'strategy_1h_rsi',
+          yAxisIndex: 2,
+          encode: {
+            y: 5,
+          },
+        },
+        {
+          name: 'watch_rsi14',
+          type: 'line',
+          seriesColumn: 'watch_rsi14',
+          yAxisIndex: 2,
+          encode: {
+            y: 6,
+          },
+        },
+      ],
+      yAxis: [{}, {}, { name: 'RSI' }],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: timestamp,
+        axisValueLabel: String(timestamp),
+        marker: '<span></span>',
+        encode: {
+          y: [1, 4, 3, 2],
+        },
+        value: [timestamp, 100, 108, 90, 105, 61, 44],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 1,
+        seriesName: 'strategy_1h_rsi',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [5],
+        },
+        value: [timestamp, 100, 108, 90, 105, 61, 44],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 2,
+        seriesName: 'watch_rsi14',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [6],
+        },
+        value: [timestamp, 100, 108, 90, 105, 61, 44],
+      },
+    ] as never);
+
+    expect(html.indexOf('Candles')).toBeLessThan(html.indexOf('Bot Decision'));
+    expect(html.indexOf('Bot Decision')).toBeLessThan(html.indexOf('Strategy Output'));
+    expect(html.indexOf('Strategy Output')).toBeLessThan(html.indexOf('Watch Indicators'));
+    expect(html).toContain('Decision');
+    expect(html).toContain('enter_long');
+    expect(html).toContain('Decision Time');
+    expect(html).toContain('2026-06-29T02:00:00Z');
+    expect(html).toContain('Strategy');
+    expect(html).toContain('TestStrategy');
+    expect(html).toContain('Snapshot Type');
+    expect(html).toContain('live');
+    expect(html).toContain('confidence');
+    expect(html).toContain('0.87');
+    expect(html).toContain('market_regime');
+    expect(html).toContain('trend');
+  });
+
+  it('does not render decision snapshot point evidence for a different timestamp', () => {
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'decision.snapshot',
+          source: 'decision_snapshot',
+          status: 'ok',
+          label: 'Decision Snapshot',
+          series: [],
+          points: [
+            {
+              timestamp: 1_782_698_400_000,
+              payload: {
+                decision: 'enter_long',
+              },
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [],
+        meta,
+      },
+      series: [
+        {
+          name: 'Candles',
+          type: 'candlestick',
+          yAxisIndex: 0,
+          encode: {
+            y: [1, 4, 3, 2],
+          },
+        },
+      ],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: 1_782_698_460_000,
+        axisValueLabel: '1782698460000',
+        marker: '<span></span>',
+        encode: {
+          y: [1, 4, 3, 2],
+        },
+        value: [1_782_698_460_000, 100, 108, 90, 105],
+      },
+    ] as never);
+
+    expect(html).not.toContain('Bot Decision');
+    expect(html).not.toContain('enter_long');
+  });
+
   it('keeps legacy tooltip label and y-axis group when metadata misses a series column', () => {
     const meta: ChartResponseMeta = {
       schema_version: 1,
