@@ -331,21 +331,35 @@ describe('ResearchView', () => {
     expect(store.backtestResult).toBeNull();
   });
 
-  it('clears stale backtest data when SMA or initial cash changes', async () => {
+  it('clears stale chart and backtest data when SMA changes', async () => {
     const { pinia, store } = installResearchStore();
     const wrapper = mountResearchView(pinia);
     await flushPromises();
 
+    store.chartData = chartResponse();
     store.backtestResult = backtestResult();
     await wrapper.find('[data-test="sma-fast"]').setValue('8');
+    expect(store.chartData).toBeNull();
     expect(store.backtestResult).toBeNull();
 
+    store.chartData = chartResponse();
     store.backtestResult = backtestResult();
     await wrapper.find('[data-test="sma-slow"]').setValue('30');
+    expect(store.chartData).toBeNull();
     expect(store.backtestResult).toBeNull();
+  });
 
+  it('clears stale backtest data but keeps chart data when initial cash changes', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    const chartData = chartResponse();
+    store.chartData = chartData;
     store.backtestResult = backtestResult();
     await wrapper.find('[data-test="initial-cash"]').setValue('200000');
+
+    expect(store.chartData).toBe(chartData);
     expect(store.backtestResult).toBeNull();
   });
 

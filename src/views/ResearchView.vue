@@ -130,12 +130,12 @@ function handleAdjustmentChange(nextAdjustment: string) {
 
 function handleSmaFastChange(nextFast: number | string) {
   smaFast.value = Number(nextFast);
-  clearBacktestResult();
+  clearResearchResults();
 }
 
 function handleSmaSlowChange(nextSlow: number | string) {
   smaSlow.value = Number(nextSlow);
-  clearBacktestResult();
+  clearResearchResults();
 }
 
 function handleInitialCashChange(nextInitialCash: number | string) {
