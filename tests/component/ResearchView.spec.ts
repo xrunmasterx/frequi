@@ -11,10 +11,10 @@ import type {
 } from '@/types';
 import ResearchView from '@/views/ResearchView.vue';
 
-function botProfile(): ResearchBotProfile {
+function botProfile(id = 'a-share-research', label = 'A Share Research'): ResearchBotProfile {
   return {
-    id: 'a-share-research',
-    label: 'A Share Research',
+    id,
+    label,
     market: 'a_share',
     capabilities: {
       chart: true,
@@ -27,15 +27,19 @@ function botProfile(): ResearchBotProfile {
   };
 }
 
-function instrument(): ResearchInstrument {
+function instrument(
+  key = '600519.SH',
+  symbol = '600519',
+  displayName = 'Kweichow Moutai',
+): ResearchInstrument {
   return {
-    key: '600519.SH',
+    key,
     market: 'a_share',
     venue: 'SSE',
-    symbol: '600519',
+    symbol,
     currency: 'CNY',
     asset_type: 'stock',
-    display_name: 'Kweichow Moutai',
+    display_name: displayName,
   };
 }
 
@@ -87,13 +91,17 @@ function installResearchStore() {
   const store = useResearchStore();
 
   store.loadBots = vi.fn(async () => {
-    store.bots = [botProfile()];
+    store.bots = [botProfile(), botProfile('second-research', 'Second Research')];
     store.selectedBotId = 'a-share-research';
     return store.bots;
   });
   store.loadInstruments = vi.fn(async () => {
-    store.instruments = [instrument()];
-    store.selectedInstrument = '600519.SH';
+    if (store.selectedBotId === 'second-research') {
+      store.instruments = [instrument('000001.SZ', '000001', 'Ping An Bank')];
+    } else {
+      store.instruments = [instrument()];
+    }
+    store.selectedInstrument = store.instruments[0]?.key ?? '';
     return store.instruments;
   });
   store.loadChart = vi.fn(async () => {
@@ -233,5 +241,134 @@ describe('ResearchView', () => {
         slow: 20,
       },
     });
+  });
+
+  it('clears stale context and uses a valid instrument when switching bot', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.chartData = chartResponse();
+    store.backtestResult = backtestResult();
+    const loadStates: Array<{
+      chartData: ResearchChartResponse | null;
+      backtestResult: ResearchBacktestResult | null;
+      selectedInstrument: string;
+    }> = [];
+    store.loadChart.mockClear();
+    store.loadInstruments = vi.fn(async () => {
+      loadStates.push({
+        chartData: store.chartData,
+        backtestResult: store.backtestResult,
+        selectedInstrument: store.selectedInstrument,
+      });
+      store.instruments = [instrument('000001.SZ', '000001', 'Ping An Bank')];
+      store.selectedInstrument = '';
+      return store.instruments;
+    });
+
+    await wrapper.find('[data-test="bot-select"]').setValue('second-research');
+    await flushPromises();
+
+    expect(store.loadInstruments).toHaveBeenCalledOnce();
+    expect(loadStates).toEqual([
+      {
+        chartData: null,
+        backtestResult: null,
+        selectedInstrument: '',
+      },
+    ]);
+    expect(store.selectedBotId).toBe('second-research');
+    expect(store.selectedInstrument).toBe('000001.SZ');
+    expect(store.loadChart).toHaveBeenCalledWith({
+      bot_id: 'second-research',
+      instrument: '000001.SZ',
+      timeframe: '1d',
+      limit: 1000,
+      timerange: null,
+      adjustment: 'raw',
+      watch_indicators: { ma: [5, 20] },
+    });
+    expect(store.loadChart).not.toHaveBeenCalledWith(
+      expect.objectContaining({ instrument: '600519.SH' }),
+    );
+  });
+
+  it('clears stale chart and backtest data when instrument changes', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.instruments = [instrument(), instrument('000001.SZ', '000001', 'Ping An Bank')];
+    store.chartData = chartResponse();
+    store.backtestResult = backtestResult();
+    await flushPromises();
+
+    await wrapper.find('[data-test="instrument-select"]').setValue('000001.SZ');
+
+    expect(store.selectedInstrument).toBe('000001.SZ');
+    expect(store.chartData).toBeNull();
+    expect(store.backtestResult).toBeNull();
+  });
+
+  it('clears stale chart and backtest data when timeframe or adjustment changes', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.chartData = chartResponse();
+    store.backtestResult = backtestResult();
+    await wrapper.find('[data-test="timeframe-select"]').setValue('1h');
+
+    expect(store.chartData).toBeNull();
+    expect(store.backtestResult).toBeNull();
+
+    store.chartData = chartResponse();
+    store.backtestResult = backtestResult();
+    await wrapper.find('[data-test="adjustment-select"]').setValue('qfq');
+
+    expect(store.chartData).toBeNull();
+    expect(store.backtestResult).toBeNull();
+  });
+
+  it('clears stale backtest data when SMA or initial cash changes', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.backtestResult = backtestResult();
+    await wrapper.find('[data-test="sma-fast"]').setValue('8');
+    expect(store.backtestResult).toBeNull();
+
+    store.backtestResult = backtestResult();
+    await wrapper.find('[data-test="sma-slow"]').setValue('30');
+    expect(store.backtestResult).toBeNull();
+
+    store.backtestResult = backtestResult();
+    await wrapper.find('[data-test="initial-cash"]').setValue('200000');
+    expect(store.backtestResult).toBeNull();
+  });
+
+  it('does not refresh or backtest when selected instrument is invalid', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.selectedInstrument = 'OLD.INVALID';
+    store.loadChart.mockClear();
+    store.runBacktest.mockClear();
+    await flushPromises();
+
+    expect(wrapper.find<HTMLButtonElement>('[data-test="refresh-chart"]').element.disabled).toBe(
+      true,
+    );
+    expect(wrapper.find<HTMLButtonElement>('[data-test="run-backtest"]').element.disabled).toBe(
+      true,
+    );
+    await wrapper.find('[data-test="refresh-chart"]').trigger('click');
+    await wrapper.find('[data-test="run-backtest"]').trigger('click');
+
+    expect(store.loadChart).not.toHaveBeenCalled();
+    expect(store.runBacktest).not.toHaveBeenCalled();
   });
 });

@@ -47,8 +47,101 @@ const adjustmentOptions = computed(() => [
 ]);
 
 const hasSelection = computed(
-  () => Boolean(researchStore.selectedBotId) && Boolean(researchStore.selectedInstrument),
+  () =>
+    Boolean(researchStore.selectedBotId) &&
+    researchStore.instruments.some(
+      (instrument) => instrument.key === researchStore.selectedInstrument,
+    ),
 );
+
+function clearResearchResults() {
+  researchStore.chartData = null;
+  researchStore.backtestResult = null;
+}
+
+function clearBacktestResult() {
+  researchStore.backtestResult = null;
+}
+
+function ensureSelectedInstrument() {
+  if (
+    researchStore.instruments.some(
+      (instrument) => instrument.key === researchStore.selectedInstrument,
+    )
+  ) {
+    return;
+  }
+
+  researchStore.selectedInstrument = researchStore.instruments[0]?.key ?? '';
+}
+
+async function handleBotChange(nextBotId: string) {
+  const botId = String(nextBotId);
+  if (botId === researchStore.selectedBotId) {
+    return;
+  }
+
+  researchStore.selectedBotId = botId;
+  researchStore.selectedInstrument = '';
+  clearResearchResults();
+
+  await researchStore.loadInstruments();
+  ensureSelectedInstrument();
+  await refreshChart();
+}
+
+function handleInstrumentChange(nextInstrument: string) {
+  const instrument = String(nextInstrument);
+  if (instrument === researchStore.selectedInstrument) {
+    return;
+  }
+
+  researchStore.selectedInstrument = instrument;
+  clearResearchResults();
+}
+
+function handleTimeframeChange(nextTimeframe: string) {
+  const nextValue = String(nextTimeframe);
+  if (nextValue === timeframe.value) {
+    return;
+  }
+
+  timeframe.value = nextValue;
+  clearResearchResults();
+}
+
+function isAdjustment(value: string): value is NonNullable<ResearchChartPayload['adjustment']> {
+  return value === 'raw' || value === 'qfq' || value === 'hfq';
+}
+
+function handleAdjustmentChange(nextAdjustment: string) {
+  if (!isAdjustment(nextAdjustment)) {
+    return;
+  }
+
+  const nextValue = nextAdjustment;
+  if (nextValue === adjustment.value) {
+    return;
+  }
+
+  adjustment.value = nextValue;
+  clearResearchResults();
+}
+
+function handleSmaFastChange(nextFast: number | string) {
+  smaFast.value = Number(nextFast);
+  clearBacktestResult();
+}
+
+function handleSmaSlowChange(nextSlow: number | string) {
+  smaSlow.value = Number(nextSlow);
+  clearBacktestResult();
+}
+
+function handleInitialCashChange(nextInitialCash: number | string) {
+  initialCash.value = Number(nextInitialCash);
+  clearBacktestResult();
+}
 
 async function refreshChart() {
   if (!hasSelection.value) {
@@ -105,6 +198,7 @@ const tradeCount = computed(() =>
 onMounted(async () => {
   await researchStore.loadBots();
   await researchStore.loadInstruments();
+  ensureSelectedInstrument();
   await refreshChart();
 });
 </script>
@@ -119,37 +213,41 @@ onMounted(async () => {
         <label class="flex flex-col gap-1 text-sm">
           <span>{{ t('research.bot') }}</span>
           <USelect
-            v-model="researchStore.selectedBotId"
+            :model-value="researchStore.selectedBotId"
             :items="botOptions"
             class="w-full"
             data-test="bot-select"
+            @update:model-value="handleBotChange"
           />
         </label>
         <label class="flex flex-col gap-1 text-sm md:col-span-2">
           <span>{{ t('research.instrument') }}</span>
           <USelect
-            v-model="researchStore.selectedInstrument"
+            :model-value="researchStore.selectedInstrument"
             :items="instrumentOptions"
             class="w-full"
             data-test="instrument-select"
+            @update:model-value="handleInstrumentChange"
           />
         </label>
         <label class="flex flex-col gap-1 text-sm">
           <span>{{ t('research.timeframe') }}</span>
           <USelect
-            v-model="timeframe"
+            :model-value="timeframe"
             :items="timeframeOptions"
             class="w-full"
             data-test="timeframe-select"
+            @update:model-value="handleTimeframeChange"
           />
         </label>
         <label class="flex flex-col gap-1 text-sm">
           <span>{{ t('research.adjustment') }}</span>
           <USelect
-            v-model="adjustment"
+            :model-value="adjustment"
             :items="adjustmentOptions"
             class="w-full"
             data-test="adjustment-select"
+            @update:model-value="handleAdjustmentChange"
           />
         </label>
         <div class="flex items-end">
@@ -196,15 +294,33 @@ onMounted(async () => {
       <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
         <label class="flex flex-col gap-1 text-sm">
           <span>{{ t('research.smaFast') }}</span>
-          <UInput v-model="smaFast" type="number" min="1" data-test="sma-fast" />
+          <UInput
+            :model-value="smaFast"
+            type="number"
+            min="1"
+            data-test="sma-fast"
+            @update:model-value="handleSmaFastChange"
+          />
         </label>
         <label class="flex flex-col gap-1 text-sm">
           <span>{{ t('research.smaSlow') }}</span>
-          <UInput v-model="smaSlow" type="number" min="1" data-test="sma-slow" />
+          <UInput
+            :model-value="smaSlow"
+            type="number"
+            min="1"
+            data-test="sma-slow"
+            @update:model-value="handleSmaSlowChange"
+          />
         </label>
         <label class="flex flex-col gap-1 text-sm">
           <span>{{ t('research.initialCash') }}</span>
-          <UInput v-model="initialCash" type="number" min="0" data-test="initial-cash" />
+          <UInput
+            :model-value="initialCash"
+            type="number"
+            min="0"
+            data-test="initial-cash"
+            @update:model-value="handleInitialCashChange"
+          />
         </label>
         <div class="flex items-end">
           <UButton
