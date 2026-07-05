@@ -1,9 +1,11 @@
 import type {
   ResearchBacktestPayload,
   ResearchBacktestResult,
-  ResearchBotProfile,
+  ResearchBotsResponse,
   ResearchChartPayload,
   ResearchChartResponse,
+  ResearchInstrumentsResponse,
+  ResearchBotProfile,
   ResearchInstrument,
 } from '@/types';
 import type { AxiosInstance } from 'axios';
@@ -21,23 +23,23 @@ export const useResearchStore = defineStore('research', () => {
   const backtestResult = shallowRef<ResearchBacktestResult | null>(null);
 
   async function loadBots() {
-    const { data } = await api.value.get<ResearchBotProfile[]>('/research/bots');
-    bots.value = data;
+    const { data } = await api.value.get<ResearchBotsResponse>('/research/bots');
+    bots.value = data.bots;
     if (!selectedBotId.value) {
-      selectedBotId.value = data[0]?.id ?? '';
+      selectedBotId.value = data.bots[0]?.id ?? '';
     }
-    return data;
+    return data.bots;
   }
 
   async function loadInstruments() {
-    const { data } = await api.value.get<ResearchInstrument[]>('/research/instruments', {
+    const { data } = await api.value.get<ResearchInstrumentsResponse>('/research/instruments', {
       params: { bot_id: selectedBotId.value },
     });
-    instruments.value = data;
+    instruments.value = data.instruments;
     if (!selectedInstrument.value) {
-      selectedInstrument.value = data[0]?.key ?? '';
+      selectedInstrument.value = data.instruments[0]?.key ?? '';
     }
-    return data;
+    return data.instruments;
   }
 
   async function loadChart(payload: ResearchChartPayload) {

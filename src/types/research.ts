@@ -1,4 +1,4 @@
-import type { ChartCandlesResponse } from './candleTypes';
+import type { ChartCandlesResponse, ChartIndicatorPayload } from './candleTypes';
 
 export type ResearchMarket = 'a_share' | 'hk_stock' | 'us_stock';
 
@@ -18,6 +18,10 @@ export interface ResearchBotProfile {
   capabilities: ResearchCapabilities;
 }
 
+export interface ResearchBotsResponse {
+  bots: ResearchBotProfile[];
+}
+
 export interface ResearchInstrument {
   key: string;
   market: ResearchMarket;
@@ -28,19 +32,27 @@ export interface ResearchInstrument {
   display_name?: string | null;
 }
 
+export interface ResearchInstrumentsResponse {
+  instruments: ResearchInstrument[];
+}
+
 export interface ResearchChartPayload {
   bot_id: string;
   instrument: string;
   timeframe: string;
   limit?: number;
+  timerange?: string | null;
+  adjustment?: string | null;
+  watch_indicators?: ChartIndicatorPayload;
 }
 
 export interface ResearchBacktestPayload {
   bot_id: string;
   instrument: string;
   timeframe: string;
-  initial_cash: number;
-  strategy: {
+  timerange?: string | null;
+  initial_cash?: number;
+  strategy?: {
     type: 'sma_cross';
     fast: number;
     slow: number;
@@ -48,6 +60,9 @@ export interface ResearchBacktestPayload {
 }
 
 export interface ResearchBacktestResult {
+  instrument: string;
+  strategy: string;
+  capability: string;
   trades: Record<string, unknown>[];
   equity_curve: Record<string, unknown>[];
   metrics: Record<string, unknown>;

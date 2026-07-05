@@ -86,7 +86,7 @@ describe('research store', () => {
   });
 
   it('stores bots and preserves disabled live trading capability', async () => {
-    api.get.mockResolvedValue({ data: [botProfile()] });
+    api.get.mockResolvedValue({ data: { bots: [botProfile()] } });
     const store = useResearchStore();
     store.api = api as never;
 
@@ -98,8 +98,20 @@ describe('research store', () => {
     expect(store.selectedBotId).toBe('a-share-research');
   });
 
+  it('does not replace an existing selected bot when loading bots', async () => {
+    api.get.mockResolvedValue({ data: { bots: [botProfile()] } });
+    const store = useResearchStore();
+    store.api = api as never;
+    store.selectedBotId = 'existing-bot';
+
+    await store.loadBots();
+
+    expect(store.bots).toEqual([botProfile()]);
+    expect(store.selectedBotId).toBe('existing-bot');
+  });
+
   it('loads instruments for the selected bot and defaults selected instrument', async () => {
-    api.get.mockResolvedValue({ data: [instrument()] });
+    api.get.mockResolvedValue({ data: { instruments: [instrument()] } });
     const store = useResearchStore();
     store.api = api as never;
     store.selectedBotId = 'a-share-research';
@@ -113,12 +125,28 @@ describe('research store', () => {
     expect(store.selectedInstrument).toBe('a_share:SSE:600519');
   });
 
+  it('does not replace an existing selected instrument when loading instruments', async () => {
+    api.get.mockResolvedValue({ data: { instruments: [instrument()] } });
+    const store = useResearchStore();
+    store.api = api as never;
+    store.selectedBotId = 'a-share-research';
+    store.selectedInstrument = 'a_share:SZSE:000001';
+
+    await store.loadInstruments();
+
+    expect(store.instruments).toEqual([instrument()]);
+    expect(store.selectedInstrument).toBe('a_share:SZSE:000001');
+  });
+
   it('stores chart data from chart candles endpoint', async () => {
     const payload: ResearchChartPayload = {
       bot_id: 'a-share-research',
       instrument: 'a_share:SSE:600519',
       timeframe: '1d',
       limit: 120,
+      timerange: null,
+      adjustment: 'qfq',
+      watch_indicators: { ma: [5, 20] },
     };
     const response = chartResponse();
     api.post.mockResolvedValue({ data: response });
@@ -140,6 +168,9 @@ describe('research store', () => {
       strategy: { type: 'sma_cross', fast: 5, slow: 20 },
     };
     const result: ResearchBacktestResult = {
+      instrument: 'a_share:SSE:600519',
+      strategy: 'sma_cross',
+      capability: 'backtest',
       trades: [{ id: 1 }],
       equity_curve: [{ date: '2026-01-01', equity: 100000 }],
       metrics: { total_return: 0.12 },
