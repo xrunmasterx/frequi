@@ -9,12 +9,19 @@ import type {
   ResearchInstrument,
 } from '@/types';
 import type { AxiosInstance } from 'axios';
-import axios from 'axios';
+import { useBotStore } from './ftbotwrapper';
 
 type ResearchApi = Pick<AxiosInstance, 'get' | 'post'>;
 
+function getResearchApi(): ResearchApi {
+  const api = useBotStore().activeBot?.api;
+  if (!api) {
+    throw new Error('Research requests require an active bot API client.');
+  }
+  return api;
+}
+
 export const useResearchStore = defineStore('research', () => {
-  const api = shallowRef<ResearchApi>(axios.create({ baseURL: '/api/v1' }));
   const bots = shallowRef<ResearchBotProfile[]>([]);
   const instruments = shallowRef<ResearchInstrument[]>([]);
   const selectedBotId = ref('');
@@ -23,7 +30,7 @@ export const useResearchStore = defineStore('research', () => {
   const backtestResult = shallowRef<ResearchBacktestResult | null>(null);
 
   async function loadBots() {
-    const { data } = await api.value.get<ResearchBotsResponse>('/research/bots');
+    const { data } = await getResearchApi().get<ResearchBotsResponse>('/research/bots');
     bots.value = data.bots;
     if (!selectedBotId.value) {
       selectedBotId.value = data.bots[0]?.id ?? '';
@@ -32,9 +39,12 @@ export const useResearchStore = defineStore('research', () => {
   }
 
   async function loadInstruments() {
-    const { data } = await api.value.get<ResearchInstrumentsResponse>('/research/instruments', {
-      params: { bot_id: selectedBotId.value },
-    });
+    const { data } = await getResearchApi().get<ResearchInstrumentsResponse>(
+      '/research/instruments',
+      {
+        params: { bot_id: selectedBotId.value },
+      },
+    );
     instruments.value = data.instruments;
     if (!selectedInstrument.value) {
       selectedInstrument.value = data.instruments[0]?.key ?? '';
@@ -43,7 +53,7 @@ export const useResearchStore = defineStore('research', () => {
   }
 
   async function loadChart(payload: ResearchChartPayload) {
-    const { data } = await api.value.post<ResearchChartResponse>(
+    const { data } = await getResearchApi().post<ResearchChartResponse>(
       '/research/chart_candles',
       payload,
     );
@@ -52,13 +62,15 @@ export const useResearchStore = defineStore('research', () => {
   }
 
   async function runBacktest(payload: ResearchBacktestPayload) {
-    const { data } = await api.value.post<ResearchBacktestResult>('/research/backtest', payload);
+    const { data } = await getResearchApi().post<ResearchBacktestResult>(
+      '/research/backtest',
+      payload,
+    );
     backtestResult.value = data;
     return data;
   }
 
   return {
-    api,
     bots,
     instruments,
     selectedBotId,

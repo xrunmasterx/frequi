@@ -11,12 +11,27 @@ import type {
   ResearchInstrument,
 } from '@/types';
 
+const authenticatedApi = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+}));
 const axiosCreate = vi.hoisted(() => vi.fn(() => ({ get: vi.fn(), post: vi.fn() })));
+const useBotStore = vi.hoisted(() =>
+  vi.fn(() => ({
+    activeBot: {
+      api: authenticatedApi,
+    },
+  })),
+);
 
 vi.mock('axios', () => ({
   default: {
     create: axiosCreate,
   },
+}));
+
+vi.mock('@/stores/ftbotwrapper', () => ({
+  useBotStore,
 }));
 
 function botProfile(): ResearchBotProfile {
@@ -73,35 +88,38 @@ function chartResponse(): ResearchChartResponse {
 }
 
 describe('research store', () => {
-  const api = {
-    get: vi.fn(),
-    post: vi.fn(),
-  };
-
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
-    api.get.mockReset();
-    api.post.mockReset();
+    authenticatedApi.get.mockReset();
+    authenticatedApi.post.mockReset();
   });
 
-  it('stores bots and preserves disabled live trading capability', async () => {
-    api.get.mockResolvedValue({ data: { bots: [botProfile()] } });
+  it('uses the active bot authenticated API client instead of creating a bare axios client', async () => {
+    authenticatedApi.get.mockResolvedValue({ data: { bots: [botProfile()] } });
     const store = useResearchStore();
-    store.api = api as never;
 
     await store.loadBots();
 
-    expect(api.get).toHaveBeenCalledWith('/research/bots');
+    expect(axiosCreate).not.toHaveBeenCalled();
+    expect(authenticatedApi.get).toHaveBeenCalledWith('/research/bots');
+  });
+
+  it('stores bots and preserves disabled live trading capability', async () => {
+    authenticatedApi.get.mockResolvedValue({ data: { bots: [botProfile()] } });
+    const store = useResearchStore();
+
+    await store.loadBots();
+
+    expect(authenticatedApi.get).toHaveBeenCalledWith('/research/bots');
     expect(store.bots).toEqual([botProfile()]);
     expect(store.bots[0]?.capabilities.live_trade).toBe(false);
     expect(store.selectedBotId).toBe('a-share-research');
   });
 
   it('does not replace an existing selected bot when loading bots', async () => {
-    api.get.mockResolvedValue({ data: { bots: [botProfile()] } });
+    authenticatedApi.get.mockResolvedValue({ data: { bots: [botProfile()] } });
     const store = useResearchStore();
-    store.api = api as never;
     store.selectedBotId = 'existing-bot';
 
     await store.loadBots();
@@ -111,14 +129,13 @@ describe('research store', () => {
   });
 
   it('loads instruments for the selected bot and defaults selected instrument', async () => {
-    api.get.mockResolvedValue({ data: { instruments: [instrument()] } });
+    authenticatedApi.get.mockResolvedValue({ data: { instruments: [instrument()] } });
     const store = useResearchStore();
-    store.api = api as never;
     store.selectedBotId = 'a-share-research';
 
     await store.loadInstruments();
 
-    expect(api.get).toHaveBeenCalledWith('/research/instruments', {
+    expect(authenticatedApi.get).toHaveBeenCalledWith('/research/instruments', {
       params: { bot_id: 'a-share-research' },
     });
     expect(store.instruments).toEqual([instrument()]);
@@ -126,9 +143,8 @@ describe('research store', () => {
   });
 
   it('does not replace an existing selected instrument when loading instruments', async () => {
-    api.get.mockResolvedValue({ data: { instruments: [instrument()] } });
+    authenticatedApi.get.mockResolvedValue({ data: { instruments: [instrument()] } });
     const store = useResearchStore();
-    store.api = api as never;
     store.selectedBotId = 'a-share-research';
     store.selectedInstrument = 'a_share:SZSE:000001';
 
@@ -149,13 +165,12 @@ describe('research store', () => {
       watch_indicators: { ma: [5, 20] },
     };
     const response = chartResponse();
-    api.post.mockResolvedValue({ data: response });
+    authenticatedApi.post.mockResolvedValue({ data: response });
     const store = useResearchStore();
-    store.api = api as never;
 
     await store.loadChart(payload);
 
-    expect(api.post).toHaveBeenCalledWith('/research/chart_candles', payload);
+    expect(authenticatedApi.post).toHaveBeenCalledWith('/research/chart_candles', payload);
     expect(store.chartData).toEqual(response);
   });
 
@@ -177,13 +192,12 @@ describe('research store', () => {
       signals: [{ date: '2026-01-02', side: 'buy' }],
       warnings: [],
     };
-    api.post.mockResolvedValue({ data: result });
+    authenticatedApi.post.mockResolvedValue({ data: result });
     const store = useResearchStore();
-    store.api = api as never;
 
     await store.runBacktest(payload);
 
-    expect(api.post).toHaveBeenCalledWith('/research/backtest', payload);
+    expect(authenticatedApi.post).toHaveBeenCalledWith('/research/backtest', payload);
     expect(store.backtestResult).toEqual(result);
   });
 });

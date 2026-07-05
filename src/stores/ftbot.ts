@@ -1641,6 +1641,7 @@ export function createBotSubStore(botId: string, botName: string) {
     // #endregion websocket handling
 
     return {
+      api,
       websocketStarted,
       isSelected,
       ping,
