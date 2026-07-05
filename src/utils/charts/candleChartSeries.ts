@@ -1,14 +1,25 @@
 import type { IndicatorConfig } from '@/types';
 import { ChartType } from '@/types';
+import type { ChartResponseMeta } from '@/types/candleTypes';
+import { getSeriesSourceLabel } from '@/utils/charts/chartSeriesMeta';
 import type { BarSeriesOption, LineSeriesOption, ScatterSeriesOption } from 'echarts';
 
-export type SupportedSeriesTypes = LineSeriesOption | BarSeriesOption | ScatterSeriesOption;
+export type SupportedSeriesTypes = (LineSeriesOption | BarSeriesOption | ScatterSeriesOption) & {
+  seriesColumn?: string;
+};
 
 export function isIndicatorVisible(value: IndicatorConfig): boolean {
   return value.hidden !== true;
 }
 
-export function formatIndicatorLabel(key: string): string {
+export function formatIndicatorLabel(key: string, meta?: ChartResponseMeta | null): string {
+  if (meta) {
+    const metadataLabel = getSeriesSourceLabel(meta, key);
+    if (metadataLabel !== key) {
+      return metadataLabel;
+    }
+  }
+
   const maMatch = /^watch_ma(\d+)$/.exec(key);
   if (maMatch) {
     return `MA${maMatch[1]}`;
@@ -47,10 +58,12 @@ export function generateCandleSeries(
   key: string,
   value: IndicatorConfig,
   axis = 0,
+  meta?: ChartResponseMeta | null,
 ): SupportedSeriesTypes {
   const sp: SupportedSeriesTypes = {
-    name: formatIndicatorLabel(key),
+    name: formatIndicatorLabel(key, meta),
     type: value.type || 'line',
+    seriesColumn: key,
     xAxisIndex: axis,
     yAxisIndex: axis,
     itemStyle: {

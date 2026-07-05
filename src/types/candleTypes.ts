@@ -157,10 +157,68 @@ export interface ChartOverlayMeta {
   warning?: string | null;
 }
 
+export type ChartLayerSource =
+  | 'market'
+  | 'watch'
+  | 'strategy'
+  | 'execution'
+  | 'decision_snapshot'
+  | 'recomputed';
+
+export interface ChartSeriesCoverage {
+  first_valid?: string | null;
+  last_valid?: string | null;
+  valid_points: number;
+  total_points: number;
+  warmup_until?: string | null;
+  reason?: string | null;
+}
+
+export interface ChartSeriesMeta {
+  column: string;
+  label: string;
+  source: ChartLayerSource;
+  kind: string;
+  panel: string;
+  timeframe?: string | null;
+  visible: boolean;
+  coverage: ChartSeriesCoverage;
+  provisional: boolean;
+}
+
+export interface ChartLayerMeta {
+  id: string;
+  source: ChartLayerSource;
+  status: 'ok' | 'partial' | 'hidden' | 'unavailable' | 'stale' | 'provisional';
+  label: string;
+  timeframe?: string | null;
+  alignment?: string | null;
+  series: ChartSeriesMeta[];
+  warnings: string[];
+}
+
+export interface ChartWindowMeta {
+  requested_count: number;
+  returned_count: number;
+  warmup_count: number;
+  display_default_count?: number | null;
+  data_start?: string | null;
+  data_stop?: string | null;
+  last_candle_complete: boolean;
+}
+
+export interface ChartResponseMeta {
+  schema_version: number;
+  window: ChartWindowMeta;
+  layers: ChartLayerMeta[];
+  warnings: string[];
+}
+
 export interface ChartCandlesResponse extends PairHistory {
   chart_timeframe: string;
   strategy_timeframe?: string | null;
   overlay?: ChartOverlayMeta | null;
+  meta?: ChartResponseMeta | null;
   plot_config: PlotConfig;
   warnings: string[];
   candle_mode: 'closed' | 'live';

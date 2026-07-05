@@ -1,6 +1,12 @@
 import type { EChartsOption, SeriesOption, TooltipComponentFormatterCallbackParams } from 'echarts';
 import type { Ref } from 'vue';
 import { format as echartsFormat } from 'echarts';
+import type { ChartResponseMeta } from '@/types/candleTypes';
+import {
+  getSeriesMetaByColumn,
+  getSeriesSourceLabel,
+  getSeriesTooltipGroup,
+} from '@/utils/charts/chartSeriesMeta';
 
 type CandleTooltipParam = Exclude<
   TooltipComponentFormatterCallbackParams,
@@ -21,9 +27,19 @@ type CandleTooltipCrosshairSelection = {
   timestamp: number;
 };
 
+type CandleTooltipSeriesOption = SeriesOption & {
+  seriesColumn?: string;
+};
+
+type CandleTooltipDatasetOption = {
+  meta?: ChartResponseMeta | null;
+  source?: unknown;
+};
+
 export function useCandleChartTooltip(
   chartOptions: Ref<EChartsOption>,
   selectedCrosshair?: Ref<CandleTooltipCrosshairSelection | undefined>,
+  meta?: Ref<ChartResponseMeta | null | undefined> | ChartResponseMeta | null,
 ) {
   const { t } = useAppI18n();
 
@@ -44,11 +60,29 @@ export function useCandleChartTooltip(
     return echartsFormat.encodeHTML(value ?? '').replaceAll('\n', '<br />');
   }
 
-  function getSeriesOptionForTooltip(seriesIndex: number | undefined): SeriesOption | undefined {
+  function getSeriesOptionForTooltip(
+    seriesIndex: number | undefined,
+  ): CandleTooltipSeriesOption | undefined {
     if (seriesIndex === undefined || !Array.isArray(chartOptions.value.series)) {
       return undefined;
     }
-    return chartOptions.value.series[seriesIndex];
+    return chartOptions.value.series[seriesIndex] as CandleTooltipSeriesOption | undefined;
+  }
+
+  function getChartResponseMeta(): ChartResponseMeta | null | undefined {
+    if (meta && typeof meta === 'object' && 'value' in meta) {
+      return meta.value;
+    }
+    if (meta) {
+      return meta;
+    }
+
+    const dataset = chartOptions.value.dataset;
+    const datasetOption = Array.isArray(dataset) ? dataset[0] : dataset;
+    if (datasetOption && typeof datasetOption === 'object' && 'meta' in datasetOption) {
+      return (datasetOption as CandleTooltipDatasetOption).meta;
+    }
+    return undefined;
   }
 
   function getDatasetRow(dataIndex: number): unknown[] | undefined {
@@ -127,6 +161,45 @@ export function useCandleChartTooltip(
       }
     }
     return t('chart.legendCandles');
+  }
+
+  function getTooltipSeriesColumn(param: CandleTooltipParam): string | undefined {
+    const chartMeta = getChartResponseMeta();
+    const series = getSeriesOptionForTooltip(param.seriesIndex);
+    if (series?.seriesColumn) {
+      return series.seriesColumn;
+    }
+    if (chartMeta && param.seriesName && getSeriesMetaByColumn(chartMeta, param.seriesName)) {
+      return param.seriesName;
+    }
+    for (const layer of chartMeta?.layers ?? []) {
+      const seriesMeta = layer.series.find((candidate) => candidate.label === param.seriesName);
+      if (seriesMeta) {
+        return seriesMeta.column;
+      }
+    }
+    return undefined;
+  }
+
+  function getTooltipLineLabel(param: CandleTooltipParam): string {
+    const chartMeta = getChartResponseMeta();
+    const column = getTooltipSeriesColumn(param);
+    if (chartMeta && column && getSeriesMetaByColumn(chartMeta, column)) {
+      return getSeriesSourceLabel(chartMeta, column);
+    }
+    return param.seriesName ?? '';
+  }
+
+  function getTooltipGroupTitle(param: CandleTooltipParam): string {
+    if (param.seriesType === 'candlestick') {
+      return getTooltipSectionTitle(param.seriesIndex);
+    }
+    const chartMeta = getChartResponseMeta();
+    const column = getTooltipSeriesColumn(param);
+    if (chartMeta && column && getSeriesMetaByColumn(chartMeta, column)) {
+      return getSeriesTooltipGroup(chartMeta, column);
+    }
+    return getTooltipSectionTitle(param.seriesIndex);
   }
 
   /**
@@ -229,7 +302,7 @@ export function useCandleChartTooltip(
 
     const values = getTooltipDimensionValues(param);
     const marker = typeof param.marker === 'string' ? param.marker : '';
-    const label = param.seriesName ?? '';
+    const label = getTooltipLineLabel(param);
     if (values.length === 0) {
       return [];
     }
@@ -290,7 +363,7 @@ export function useCandleChartTooltip(
         continue;
       }
 
-      const sectionTitle = getTooltipSectionTitle(param.seriesIndex);
+      const sectionTitle = getTooltipGroupTitle(param);
       const sectionLines = groupedLines.get(sectionTitle) ?? [];
       sectionLines.push(...lines);
       groupedLines.set(sectionTitle, sectionLines);

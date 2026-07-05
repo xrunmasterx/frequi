@@ -4,6 +4,7 @@ import { shallowRef } from 'vue';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useCandleChartTooltip } from '@/composables/useCandleChartTooltip';
+import type { ChartResponseMeta } from '@/types';
 
 describe('useCandleChartTooltip', () => {
   beforeEach(() => {
@@ -190,5 +191,200 @@ describe('useCandleChartTooltip', () => {
     expect(html).toContain('205');
     expect(html).not.toContain('100');
     expect(html).not.toContain('105');
+  });
+
+  it('groups metadata-backed series by source layer label', () => {
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'strategy.overlay',
+          source: 'strategy',
+          status: 'ok',
+          label: 'Strategy Output',
+          series: [
+            {
+              column: 'strategy_1h_rsi',
+              label: 'RSI - Strategy Output - TestStrategy',
+              source: 'strategy',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'watch.indicators',
+          source: 'watch',
+          status: 'ok',
+          label: 'Watch Indicators',
+          series: [
+            {
+              column: 'watch_rsi14',
+              label: 'RSI(14) - Watch',
+              source: 'watch',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [],
+        meta,
+      },
+      series: [
+        {
+          name: 'Candles',
+          type: 'candlestick',
+          yAxisIndex: 0,
+          encode: {
+            y: [1, 4, 3, 2],
+          },
+        },
+        {
+          name: 'strategy_1h_rsi',
+          type: 'line',
+          yAxisIndex: 2,
+          encode: {
+            y: 5,
+          },
+        },
+        {
+          name: 'watch_rsi14',
+          type: 'line',
+          yAxisIndex: 2,
+          encode: {
+            y: 6,
+          },
+        },
+      ],
+      yAxis: [{}, {}, { name: 'RSI' }],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: 1_782_698_400_000,
+        axisValueLabel: '1782698400000',
+        marker: '<span></span>',
+        encode: {
+          y: [1, 4, 3, 2],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 61, 44],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 1,
+        seriesName: 'strategy_1h_rsi',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [5],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 61, 44],
+      },
+      {
+        componentType: 'series',
+        seriesIndex: 2,
+        seriesName: 'watch_rsi14',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [6],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 61, 44],
+      },
+    ] as never);
+
+    expect(html.indexOf('Candle')).toBeLessThan(html.indexOf('Strategy Output'));
+    expect(html.indexOf('Strategy Output')).toBeLessThan(html.indexOf('Watch Indicators'));
+    expect(html).toContain('RSI - Strategy Output - TestStrategy');
+    expect(html).toContain('RSI(14) - Watch');
+  });
+
+  it('keeps legacy tooltip label and y-axis group when metadata misses a series column', () => {
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'watch.indicators',
+          source: 'watch',
+          status: 'ok',
+          label: 'Watch Indicators',
+          series: [],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [],
+        meta,
+      },
+      series: [
+        {
+          name: 'MA20',
+          type: 'line',
+          seriesColumn: 'watch_ma20',
+          yAxisIndex: 2,
+          encode: {
+            y: 5,
+          },
+        },
+      ],
+      yAxis: [{}, {}, { name: 'Moving Average' }],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'MA20',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [5],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 123],
+      },
+    ] as never);
+
+    expect(html).toContain('Moving Average');
+    expect(html).toContain('MA20');
+    expect(html).not.toContain('Watch Indicators');
+    expect(html).not.toContain('watch_ma20');
   });
 });
