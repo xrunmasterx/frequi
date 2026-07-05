@@ -16,6 +16,7 @@ export * from './locks';
 export * from './pairlists';
 export * from './plot';
 export * from './profit';
+export * from './research';
 export * from './strategy';
 export * from './trades';
 export * from './tradeStats';
