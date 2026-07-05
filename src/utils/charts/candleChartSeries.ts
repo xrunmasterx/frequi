@@ -8,6 +8,11 @@ export type SupportedSeriesTypes = (LineSeriesOption | BarSeriesOption | Scatter
   seriesColumn?: string;
 };
 
+const CANDLE_TIME_BAR_ALIGNMENT = {
+  barGap: '-100%',
+  barCategoryGap: '20%',
+} as const;
+
 export function isIndicatorVisible(value: IndicatorConfig): boolean {
   return value.hidden !== true;
 }
@@ -80,6 +85,9 @@ export function generateCandleSeries(
     sp['emphasis'] = {
       disabled: true,
     };
+  }
+  if (value.type === ChartType.bar) {
+    Object.assign(sp, CANDLE_TIME_BAR_ALIGNMENT);
   }
   return sp;
 }
