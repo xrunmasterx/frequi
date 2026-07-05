@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLiveChartDataset } from '@/composables/useLiveChartDataset';
 import { useBotStore } from '@/stores/ftbotwrapper';
+import { useSettingsStore } from '@/stores/settings';
 import { useTradeChartStore } from '@/stores/tradeChart';
 import { LoadingStatus } from '@/types';
 
@@ -138,7 +139,10 @@ describe('useLiveChartDataset', () => {
 
   it('refreshes chart candles with live mode and strategy overlay', () => {
     const { getChartCandles } = installBotStore();
+    const settingsStore = useSettingsStore();
     const tradeChartStore = useTradeChartStore();
+    settingsStore.chartDataCandleCount = 1500;
+    settingsStore.chartDefaultCandleCount = 300;
     tradeChartStore.useStrategyOverlay = true;
 
     const { liveChart } = mountLiveChart('1h');
@@ -148,6 +152,8 @@ describe('useLiveChartDataset', () => {
     expect(getChartCandles).toHaveBeenCalledWith({
       pair: 'BTC/USDT:USDT',
       timeframe: '1h',
+      limit: 1500,
+      display_count: 300,
       include_strategy_overlay: true,
       candle_mode: 'live',
     });
@@ -181,6 +187,8 @@ describe('useLiveChartDataset', () => {
     expect(getChartCandles).toHaveBeenCalledWith({
       pair: 'BTC/USDT:USDT',
       timeframe: '1m',
+      limit: 1000,
+      display_count: 250,
       include_strategy_overlay: true,
       candle_mode: 'live',
     });

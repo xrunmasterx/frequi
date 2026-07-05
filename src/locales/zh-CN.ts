@@ -67,7 +67,8 @@ export const zhCN = {
     onlyRequestNecessaryColumns: '只请求必要列',
     onlyRequestNecessaryColumnsHint:
       '可减少大型 dataframe 的传输量。图表配置变化时可能需要额外请求。',
-    defaultCandles: '默认显示的 K 线数量（默认 250）',
+    defaultCandles: '图表视口默认显示的 K 线数量（默认 250）',
+    chartDataCandles: '后端图表数据获取的 K 线数量（默认 1000）',
     candleColorPreference: 'K 线颜色偏好',
     greenUpRedDown: '上涨绿 / 下跌红',
     redUpGreenDown: '上涨红 / 下跌绿',

@@ -69,7 +69,8 @@ export const en = {
     onlyRequestNecessaryColumns: 'Only request necessary columns',
     onlyRequestNecessaryColumnsHint:
       'Can reduce the transfer size for large dataframes. May require additional calls if the plot config changes.',
-    defaultCandles: 'Default number of candles to display (defaults to 250)',
+    defaultCandles: 'Default visible candles in chart viewport (defaults to 250)',
+    chartDataCandles: 'Backend chart data candles to fetch (defaults to 1000)',
     candleColorPreference: 'Candle Color Preference',
     greenUpRedDown: 'Green Up/Red Down',
     redUpGreenDown: 'Red Up/Green Down',

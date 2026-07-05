@@ -34,6 +34,7 @@ interface UseLiveChartDatasetOptions {
 export function useLiveChartDataset(options: UseLiveChartDatasetOptions) {
   const botStore = useBotStore();
   const tradeChartStore = useTradeChartStore();
+  const settingsStore = useSettingsStore();
   const { t } = useAppI18n();
   let refreshTimer: number | undefined;
 
@@ -98,6 +99,8 @@ export function useLiveChartDataset(options: UseLiveChartDatasetOptions) {
     activeBot.getChartCandles({
       pair,
       timeframe: timeframe.value,
+      limit: settingsStore.chartDataCandleCount,
+      display_count: settingsStore.chartDefaultCandleCount,
       include_strategy_overlay: tradeChartStore.useStrategyOverlay,
       candle_mode: 'live',
     });

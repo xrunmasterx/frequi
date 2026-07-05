@@ -167,6 +167,26 @@ const resetDynamicLayout = () => {
           </div>
         </div>
 
+        <div>
+          <p>{{ t('settings.chartDataCandles') }}</p>
+          <div class="flex flex-row gap-5 w-full items-center">
+            <USlider
+              v-model="settingsStore.chartDataCandleCount"
+              class="flex-1"
+              :step="50"
+              :min="100"
+              :max="2000"
+            />
+            <UInputNumber
+              v-model="settingsStore.chartDataCandleCount"
+              :step="50"
+              :min="100"
+              :max="2000"
+              size="sm"
+            />
+          </div>
+        </div>
+
         <div class="space-y-1">
           <label class="block">{{ t('settings.candleColorPreference') }}</label>
           <div class="flex flex-row gap-5 items-center">

@@ -363,6 +363,23 @@ export function createBotSubStore(botId: string, botName: string) {
     const history = ref<PairHistoryLocal>({});
     const historyStatus = shallowRef(LoadingStatus.not_loaded);
 
+    function stableChartRequestKeyPart(value: unknown): string {
+      if (value === undefined) {
+        return 'undefined';
+      }
+      if (value === null || typeof value !== 'object') {
+        return JSON.stringify(value) ?? String(value);
+      }
+      if (Array.isArray(value)) {
+        return `[${value.map(stableChartRequestKeyPart).join(',')}]`;
+      }
+
+      return `{${Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableChartRequestKeyPart(entryValue)}`)
+        .join(',')}}`;
+    }
+
     async function getPairCandles(payload: PairCandlePayload) {
       if (payload.pair && payload.timeframe) {
         candleDataStatus.value = LoadingStatus.loading;
@@ -406,11 +423,15 @@ export function createBotSubStore(botId: string, botName: string) {
 
     async function getChartCandles(payload: ChartCandlesPayload) {
       if (payload.pair && payload.timeframe) {
-        const requestKey = [
+        const requestKey = stableChartRequestKeyPart([
           payload.pair,
           payload.timeframe,
           payload.candle_mode ?? 'closed',
-        ].join('__');
+          payload.limit ?? null,
+          payload.display_count ?? null,
+          payload.include_strategy_overlay ?? null,
+          payload.watch_indicators ?? null,
+        ]);
         await runDedupedChartRefresh(chartCandleRequests, requestKey, async () => {
           chartCandleDataStatus.value = LoadingStatus.loading;
           try {
@@ -1533,9 +1554,12 @@ export function createBotSubStore(botId: string, botName: string) {
               botFeatures.value.chartCandles &&
               chartTimeframe
             ) {
+              const settingsStore = useSettingsStore();
               getChartCandles({
                 pair,
                 timeframe: chartTimeframe,
+                limit: settingsStore.chartDataCandleCount,
+                display_count: settingsStore.chartDefaultCandleCount,
                 include_strategy_overlay: tradeChartStore.useStrategyOverlay,
                 candle_mode: 'live',
               });

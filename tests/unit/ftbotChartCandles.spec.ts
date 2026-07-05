@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createBotSubStore } from '@/stores/ftbot';
+import { useSettingsStore } from '@/stores/settings';
 import { useTradeChartStore } from '@/stores/tradeChart';
 import { RunModes } from '@/types';
 import type { ChartCandlesResponse } from '@/types';
@@ -128,6 +129,10 @@ describe('ftbot chart candles websocket refresh', () => {
     } as never;
     bot.plotMultiPairs = ['BTC/USDT:USDT'];
 
+    const settingsStore = useSettingsStore();
+    settingsStore.chartDataCandleCount = 1600;
+    settingsStore.chartDefaultCandleCount = 350;
+
     const tradeChartStore = useTradeChartStore();
     tradeChartStore.isTradeChartActive = true;
     tradeChartStore.activeBotId = 'test-bot';
@@ -150,8 +155,53 @@ describe('ftbot chart candles websocket refresh', () => {
     expect(apiPost).toHaveBeenCalledWith('/chart_candles', {
       pair: 'BTC/USDT:USDT',
       timeframe: '1m',
+      limit: 1600,
+      display_count: 350,
       include_strategy_overlay: true,
       candle_mode: 'live',
     });
+  });
+
+  it('does not dedupe chart candle requests with different response shaping fields', async () => {
+    const bot = createBotSubStore('test-bot', 'Test Bot');
+    let resolveFirstRequest: ((value: { data: ChartCandlesResponse }) => void) | undefined;
+    const firstRequest = new Promise<{ data: ChartCandlesResponse }>((resolve) => {
+      resolveFirstRequest = resolve;
+    });
+    apiPost
+      .mockImplementationOnce(() => firstRequest)
+      .mockResolvedValueOnce({ data: chartCandlesResponse() });
+
+    const pendingRefresh = bot.getChartCandles({
+      pair: 'BTC/USDT:USDT',
+      timeframe: '1m',
+      limit: 1000,
+      display_count: 250,
+      include_strategy_overlay: true,
+      candle_mode: 'live',
+    });
+    await flushPromises();
+
+    await bot.getChartCandles({
+      pair: 'BTC/USDT:USDT',
+      timeframe: '1m',
+      limit: 1500,
+      display_count: 300,
+      include_strategy_overlay: true,
+      candle_mode: 'live',
+    });
+
+    expect(apiPost).toHaveBeenCalledTimes(2);
+    expect(apiPost).toHaveBeenNthCalledWith(
+      2,
+      '/chart_candles',
+      expect.objectContaining({
+        limit: 1500,
+        display_count: 300,
+      }),
+    );
+
+    resolveFirstRequest?.({ data: chartCandlesResponse() });
+    await pendingRefresh;
   });
 });

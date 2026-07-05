@@ -60,6 +60,7 @@ export interface ChartCandlesPayload {
   pair: string;
   timeframe: string;
   limit?: number;
+  display_count?: number;
   watch_indicators?: ChartIndicatorPayload;
   include_strategy_overlay?: boolean;
   candle_mode?: 'closed' | 'live';

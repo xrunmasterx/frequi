@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import type { ChartSliderPosition, IndicatorConfig, PairHistory, PlotConfig, Trade } from '@/types';
+import type {
+  ChartResponseMeta,
+  ChartSliderPosition,
+  IndicatorConfig,
+  PairHistory,
+  PlotConfig,
+  Trade,
+} from '@/types';
 import { ChartType } from '@/types';
 
 import ECharts from 'vue-echarts';
@@ -84,7 +91,7 @@ use([
 
 const props = defineProps<{
   trades: Trade[];
-  dataset: PairHistory;
+  dataset: PairHistory & { meta?: ChartResponseMeta | null };
   heikinAshi: boolean;
   showMarkArea: boolean;
   useUTC: boolean;
@@ -139,6 +146,8 @@ const timeframe = computed(() => {
   return props.dataset ? props.dataset.timeframe : '';
 });
 
+const chartMeta = computed(() => props.dataset.meta ?? null);
+
 const hasData = computed(() => {
   return props.dataset !== null && typeof props.dataset === 'object';
 });
@@ -162,7 +171,11 @@ usePercentageTool(
   toRef(() => props.dataset.timeframe_ms),
 );
 
-const { formatCandleTooltip } = useCandleChartTooltip(chartOptions, crosshairSelection);
+const { formatCandleTooltip } = useCandleChartTooltip(
+  chartOptions,
+  crosshairSelection,
+  chartMeta,
+);
 
 function formatPriceAxisPointerLabel(params: { value: unknown }) {
   const value = Number(params.value);
@@ -250,7 +263,7 @@ function addLegend(name: string, position: number | undefined = undefined) {
     !Array.isArray(chartOptions.value.legend.data)
   )
     return;
-  const label = formatIndicatorLabel(name);
+  const label = formatIndicatorLabel(name, chartMeta.value);
   if (!chartOptions.value.legend.data.includes(label)) {
     if (position !== undefined) {
       chartOptions.value.legend.data.splice(position, 0, label);
@@ -292,6 +305,7 @@ function updateChart(initial = false) {
   if (chartOptions.value?.title) {
     chartOptions.value.title[0].text = chartTitle.value;
   }
+  resetLocalizedLegendLabels();
   // Avoid mutation of dataset.columns array
   const columns = props.dataset.columns.slice();
 
@@ -548,7 +562,7 @@ function updateChart(initial = false) {
       if (col > 0) {
         addLegend(key);
         if (Array.isArray(options.series)) {
-          options.series.push(generateCandleSeries(colDate, col, key, value));
+          options.series.push(generateCandleSeries(colDate, col, key, value, 0, chartMeta.value));
 
           if (value.fill_to) {
             // Assign
@@ -558,7 +572,14 @@ function updateChart(initial = false) {
               color: value.color,
               type: ChartType.line,
             };
-            const areaSeries = generateAreaCandleSeries(colDate, fillCol, key, fillValue, 0);
+            const areaSeries = generateAreaCandleSeries(
+              colDate,
+              fillCol,
+              key,
+              fillValue,
+              0,
+              chartMeta.value,
+            );
 
             const currentSeries = options.series[options.series.length - 1];
             if (currentSeries) {
@@ -638,7 +659,9 @@ function updateChart(initial = false) {
         if (col > 0) {
           addLegend(sk);
           if (options.series && Array.isArray(options.series)) {
-            options.series.push(generateCandleSeries(colDate, col, sk, sv, plotIndex));
+            options.series.push(
+              generateCandleSeries(colDate, col, sk, sv, plotIndex, chartMeta.value),
+            );
             if (sv.fill_to) {
               // Assign
               const fillColKey = `${sk}-${sv.fill_to}`;
@@ -653,6 +676,7 @@ function updateChart(initial = false) {
                 sk,
                 fillValue,
                 plotIndex,
+                chartMeta.value,
               );
               const currentSeries = options.series[options.series.length - 1];
               if (currentSeries) {

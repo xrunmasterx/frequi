@@ -387,4 +387,73 @@ describe('useCandleChartTooltip', () => {
     expect(html).not.toContain('Watch Indicators');
     expect(html).not.toContain('watch_ma20');
   });
+
+  it('uses explicitly provided metadata when chart options do not carry metadata', () => {
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'watch.indicators',
+          source: 'watch',
+          status: 'ok',
+          label: 'Watch Indicators',
+          series: [
+            {
+              column: 'watch_rsi14',
+              label: 'RSI(14) - Watch',
+              source: 'watch',
+              kind: 'line',
+              panel: 'RSI',
+              visible: true,
+              coverage: {
+                valid_points: 100,
+                total_points: 100,
+              },
+              provisional: false,
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      series: [
+        {
+          name: 'RSI 14',
+          type: 'line',
+          seriesColumn: 'watch_rsi14',
+          yAxisIndex: 2,
+          encode: {
+            y: 5,
+          },
+        },
+      ],
+      yAxis: [{}, {}, { name: 'RSI' }],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions, undefined, meta).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'RSI 14',
+        seriesType: 'line',
+        marker: '<span></span>',
+        encode: {
+          y: [5],
+        },
+        value: [1_782_698_400_000, 100, 108, 90, 105, 44],
+      },
+    ] as never);
+
+    expect(html).toContain('Watch Indicators');
+    expect(html).toContain('RSI(14) - Watch');
+    expect(html).not.toContain('RSI 14');
+  });
 });

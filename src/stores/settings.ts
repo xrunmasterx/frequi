@@ -34,6 +34,7 @@ export const useSettingsStore = defineStore(
     const confirmDialog = ref(true);
     const chartLabelSide = ref<'left' | 'right'>('right');
     const chartDefaultCandleCount = ref(250);
+    const chartDataCandleCount = ref(1000);
 
     const timeProfitPeriod = ref(TimeSummaryOptions.daily);
     const timeProfitPreference = ref(TimeSummaryCols.abs_profit);
@@ -77,6 +78,7 @@ export const useSettingsStore = defineStore(
       confirmDialog,
       chartLabelSide,
       chartDefaultCandleCount,
+      chartDataCandleCount,
       timeProfitPeriod,
       timeProfitPreference,
       multiPaneButtonsShowText,

@@ -90,6 +90,7 @@ export function generateAreaCandleSeries(
   key: string,
   value: IndicatorConfig,
   axis = 0,
+  meta?: ChartResponseMeta | null,
 ): SupportedSeriesTypes {
   const fillValue: IndicatorConfig = {
     // color: value.color;
@@ -101,6 +102,7 @@ export function generateAreaCandleSeries(
     key,
     fillValue,
     axis,
+    meta,
   ) as LineSeriesOption;
 
   const areaOptions: LineSeriesOption = {

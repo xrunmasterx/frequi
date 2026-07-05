@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ChartResponseMeta } from '@/types';
-import { generateCandleSeries } from '@/utils/charts/candleChartSeries';
+import {
+  generateAreaCandleSeries,
+  generateCandleSeries,
+} from '@/utils/charts/candleChartSeries';
 
 function chartMeta(): ChartResponseMeta {
   return {
@@ -57,5 +60,18 @@ describe('candle chart series metadata labels', () => {
     const series = generateCandleSeries(0, 5, 'watch_ma20', { type: 'line' }, 0, chartMeta());
 
     expect(series.name).toBe('MA20');
+  });
+
+  it('uses metadata labels for area fill series when metadata is available', () => {
+    const series = generateAreaCandleSeries(
+      0,
+      5,
+      'watch_rsi14',
+      { type: 'line', color: '#fff' },
+      0,
+      chartMeta(),
+    );
+
+    expect(series.name).toBe('RSI(14) - Watch');
   });
 });
