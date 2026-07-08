@@ -18,10 +18,21 @@ const TRADE_CHART_REFRESH_INTERVAL_MS: Record<string, number> = {
   '1y': 900_000,
 };
 
+const TRADE_CHART_REFRESH_TIMEFRAME_ALIASES: Record<string, string> = {
+  '60m': '1h',
+};
+
 const DEFAULT_TRADE_CHART_REFRESH_INTERVAL_MS = 60_000;
 
+export function normalizeTradeChartRefreshTimeframe(timeframe: string): string {
+  return TRADE_CHART_REFRESH_TIMEFRAME_ALIASES[timeframe] ?? timeframe;
+}
+
 export function getTradeChartRefreshIntervalMs(timeframe: string): number {
-  return TRADE_CHART_REFRESH_INTERVAL_MS[timeframe] ?? DEFAULT_TRADE_CHART_REFRESH_INTERVAL_MS;
+  return (
+    TRADE_CHART_REFRESH_INTERVAL_MS[normalizeTradeChartRefreshTimeframe(timeframe)] ??
+    DEFAULT_TRADE_CHART_REFRESH_INTERVAL_MS
+  );
 }
 
 export async function runDedupedChartRefresh(
