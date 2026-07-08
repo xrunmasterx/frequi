@@ -196,4 +196,30 @@ describe('useResearchChartAutoRefresh', () => {
 
     expect(refreshChart).not.toHaveBeenCalled();
   });
+
+  it('does not reschedule after unmount when an in-flight refresh resolves', async () => {
+    let resolveRefresh: (() => void) | undefined;
+    const refreshChart = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+    const { wrapper } = mountAutoRefresh({ refreshChart });
+    await nextTick();
+
+    vi.advanceTimersByTime(10_000);
+    await Promise.resolve();
+
+    expect(refreshChart).toHaveBeenCalledTimes(1);
+
+    wrapper.unmount();
+    resolveRefresh?.();
+    await Promise.resolve();
+
+    vi.advanceTimersByTime(10_000);
+    await Promise.resolve();
+
+    expect(refreshChart).toHaveBeenCalledTimes(1);
+  });
 });

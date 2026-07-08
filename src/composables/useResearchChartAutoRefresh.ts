@@ -56,6 +56,7 @@ export function useResearchChartAutoRefresh(
   });
 
   let refreshTimer: number | undefined;
+  let isDisposed = false;
 
   function clearRefreshTimer() {
     if (refreshTimer === undefined) {
@@ -81,7 +82,7 @@ export function useResearchChartAutoRefresh(
   function scheduleRefresh() {
     clearRefreshTimer();
 
-    if (!autoRefreshEnabled.value || !isVisible.value) {
+    if (isDisposed || !autoRefreshEnabled.value || !isVisible.value) {
       return;
     }
 
@@ -113,11 +114,13 @@ export function useResearchChartAutoRefresh(
   );
 
   onMounted(() => {
+    isDisposed = false;
     document.addEventListener('visibilitychange', handleVisibilityChange);
     scheduleRefresh();
   });
 
   onUnmounted(() => {
+    isDisposed = true;
     clearRefreshTimer();
     document.removeEventListener('visibilitychange', handleVisibilityChange);
   });
