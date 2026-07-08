@@ -1,12 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useResearchStore } from '@/stores/research';
 import type {
   ResearchBacktestResult,
   ResearchBotProfile,
   ResearchChartResponse,
+  ResearchDatasetDescriptor,
   ResearchInstrument,
 } from '@/types';
 import ResearchView from '@/views/ResearchView.vue';
@@ -31,6 +32,7 @@ function instrument(
   key = '600519.SH',
   symbol = '600519',
   displayName = 'Kweichow Moutai',
+  availableTimeframes = ['1d', '1h'],
 ): ResearchInstrument {
   return {
     key,
@@ -39,7 +41,29 @@ function instrument(
     symbol,
     currency: 'CNY',
     asset_type: 'stock',
+    available_timeframes: availableTimeframes,
     display_name: displayName,
+  };
+}
+
+function datasetDescriptor(
+  datasetId: string,
+  kind: ResearchDatasetDescriptor['kind'],
+): ResearchDatasetDescriptor {
+  return {
+    dataset_id: datasetId,
+    kind,
+    market: 'a_share',
+    scope: 'instrument',
+    storage_format: kind === 'feature' ? 'csv' : 'jsonl',
+    timeframe: '1d',
+    available: true,
+    start: '2026-07-07',
+    stop: '2026-07-07',
+    provider: 'eastmoney',
+    provider_version: '1.1',
+    manifest_run_id: 'task-8-test',
+    warnings: [],
   };
 }
 
@@ -104,6 +128,14 @@ function installResearchStore() {
     store.selectedInstrument = store.instruments[0]?.key ?? '';
     return store.instruments;
   });
+  store.loadDatasets = vi.fn(async () => {
+    store.datasets = [
+      datasetDescriptor('fund_flow_daily', 'feature'),
+      datasetDescriptor('limit_pool', 'event'),
+      datasetDescriptor('announcements', 'document'),
+    ];
+    return store.datasets;
+  });
   store.loadChart = vi.fn(async () => {
     store.chartData = chartResponse();
     return store.chartData;
@@ -116,8 +148,10 @@ function installResearchStore() {
   return { pinia, store };
 }
 
+const mountedWrappers: ReturnType<typeof mountResearchView>[] = [];
+
 function mountResearchView(pinia: ReturnType<typeof createPinia>) {
-  return mount(ResearchView, {
+  const wrapper = mount(ResearchView, {
     global: {
       plugins: [pinia],
       stubs: {
@@ -145,7 +179,7 @@ function mountResearchView(pinia: ReturnType<typeof createPinia>) {
             '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
         },
         UButton: {
-          props: ['disabled', 'icon'],
+          props: ['disabled', 'icon', 'loading'],
           emits: ['click'],
           template:
             '<button :disabled="disabled" type="button" @click="$emit(\'click\', $event)"><slot /></button>',
@@ -165,11 +199,21 @@ function mountResearchView(pinia: ReturnType<typeof createPinia>) {
       },
     },
   });
+  mountedWrappers.push(wrapper);
+  return wrapper;
 }
 
 describe('ResearchView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    for (const wrapper of mountedWrappers.splice(0)) {
+      wrapper.unmount();
+    }
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('renders research controls and no trading actions', async () => {
@@ -190,7 +234,11 @@ describe('ResearchView', () => {
     expect(wrapper.find<HTMLSelectElement>('[data-test="adjustment-select"]').element.value).toBe(
       'raw',
     );
-    expect(wrapper.find('[data-test="refresh-chart"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="refresh-chart"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="research-auto-refresh-status"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="feature-dataset-select"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="event-dataset-select"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="document-dataset-select"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="sma-fast"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="sma-slow"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="initial-cash"]').exists()).toBe(true);
@@ -212,6 +260,7 @@ describe('ResearchView', () => {
 
     expect(store.loadBots).toHaveBeenCalledOnce();
     expect(store.loadInstruments).toHaveBeenCalledOnce();
+    expect(store.loadDatasets).toHaveBeenCalledOnce();
     expect(store.loadChart).toHaveBeenCalledWith({
       bot_id: 'a-share-research',
       instrument: '600519.SH',
@@ -220,7 +269,112 @@ describe('ResearchView', () => {
       timerange: null,
       adjustment: 'raw',
       watch_indicators: { ma: [5, 20] },
+      side_layers: null,
     });
+  });
+
+  it('sends selected side-data layers only with automatic chart refresh payloads', async () => {
+    vi.useFakeTimers();
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.loadChart.mockClear();
+    await wrapper.find('[data-test="feature-dataset-select"]').setValue('fund_flow_daily');
+    await wrapper.find('[data-test="event-dataset-select"]').setValue('limit_pool');
+    await wrapper.find('[data-test="document-dataset-select"]').setValue('announcements');
+    await flushPromises();
+    vi.advanceTimersByTime(900_000);
+    await flushPromises();
+
+    expect(store.loadChart).toHaveBeenCalledWith({
+      bot_id: 'a-share-research',
+      instrument: '600519.SH',
+      timeframe: '1d',
+      limit: 1000,
+      timerange: null,
+      adjustment: 'raw',
+      watch_indicators: { ma: [5, 20] },
+      side_layers: {
+        features: ['fund_flow_daily'],
+        events: ['limit_pool'],
+        documents: ['announcements'],
+      },
+    });
+
+    await wrapper.find('[data-test="run-backtest"]').trigger('click');
+
+    expect(store.runBacktest).toHaveBeenCalledWith({
+      bot_id: 'a-share-research',
+      instrument: '600519.SH',
+      timeframe: '1d',
+      initial_cash: 100000,
+      strategy: {
+        type: 'sma_cross',
+        fast: 5,
+        slow: 20,
+      },
+    });
+  });
+
+  it('auto-refreshes the chart by the selected research timeframe', async () => {
+    vi.useFakeTimers();
+    const { pinia, store } = installResearchStore();
+    store.loadInstruments = vi.fn(async () => {
+      store.instruments = [
+        instrument('688017.SH', '688017', 'Green Harmonics', ['1m', '60m']),
+      ];
+      store.selectedInstrument = '688017.SH';
+      return store.instruments;
+    });
+
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    expect(wrapper.find<HTMLSelectElement>('[data-test="timeframe-select"]').element.value).toBe(
+      '1m',
+    );
+    expect(wrapper.find('[data-test="research-auto-refresh-status"]').text()).toBe('Auto 10s');
+
+    store.loadChart.mockClear();
+    store.runBacktest.mockClear();
+
+    vi.advanceTimersByTime(9_999);
+    await flushPromises();
+    expect(store.loadChart).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    await flushPromises();
+
+    expect(store.loadChart).toHaveBeenCalledWith({
+      bot_id: 'a-share-research',
+      instrument: '688017.SH',
+      timeframe: '1m',
+      limit: 1000,
+      timerange: null,
+      adjustment: 'raw',
+      watch_indicators: { ma: [5, 20] },
+      side_layers: null,
+    });
+    expect(store.runBacktest).not.toHaveBeenCalled();
+  });
+
+  it('shows the 1h cadence label when research timeframe is 60m', async () => {
+    const { pinia, store } = installResearchStore();
+    store.loadInstruments = vi.fn(async () => {
+      store.instruments = [
+        instrument('688017.SH', '688017', 'Green Harmonics', ['1m', '60m']),
+      ];
+      store.selectedInstrument = '688017.SH';
+      return store.instruments;
+    });
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    await wrapper.find('[data-test="timeframe-select"]').setValue('60m');
+    await flushPromises();
+
+    expect(wrapper.find('[data-test="research-auto-refresh-status"]').text()).toBe('Auto 180s');
   });
 
   it('runs an SMA cross backtest for the selected research context', async () => {
@@ -271,6 +425,7 @@ describe('ResearchView', () => {
     await flushPromises();
 
     expect(store.loadInstruments).toHaveBeenCalledOnce();
+    expect(store.loadDatasets).toHaveBeenCalledTimes(2);
     expect(loadStates).toEqual([
       {
         chartData: null,
@@ -288,13 +443,14 @@ describe('ResearchView', () => {
       timerange: null,
       adjustment: 'raw',
       watch_indicators: { ma: [5, 20] },
+      side_layers: null,
     });
     expect(store.loadChart).not.toHaveBeenCalledWith(
       expect.objectContaining({ instrument: '600519.SH' }),
     );
   });
 
-  it('clears stale chart and backtest data when instrument changes', async () => {
+  it('automatically refreshes chart data when instrument changes', async () => {
     const { pinia, store } = installResearchStore();
     const wrapper = mountResearchView(pinia);
     await flushPromises();
@@ -303,49 +459,104 @@ describe('ResearchView', () => {
     store.chartData = chartResponse();
     store.backtestResult = backtestResult();
     await flushPromises();
+    store.loadChart.mockClear();
 
     await wrapper.find('[data-test="instrument-select"]').setValue('000001.SZ');
+    await flushPromises();
 
     expect(store.selectedInstrument).toBe('000001.SZ');
-    expect(store.chartData).toBeNull();
+    expect(store.loadChart).toHaveBeenCalledWith({
+      bot_id: 'a-share-research',
+      instrument: '000001.SZ',
+      timeframe: '1d',
+      limit: 1000,
+      timerange: null,
+      adjustment: 'raw',
+      watch_indicators: { ma: [5, 20] },
+      side_layers: null,
+    });
     expect(store.backtestResult).toBeNull();
   });
 
-  it('clears stale chart and backtest data when timeframe or adjustment changes', async () => {
+  it('automatically refreshes chart data when timeframe or adjustment changes', async () => {
     const { pinia, store } = installResearchStore();
     const wrapper = mountResearchView(pinia);
     await flushPromises();
 
     store.chartData = chartResponse();
     store.backtestResult = backtestResult();
+    store.loadChart.mockClear();
     await wrapper.find('[data-test="timeframe-select"]').setValue('1h');
+    await flushPromises();
 
-    expect(store.chartData).toBeNull();
+    expect(store.loadChart).toHaveBeenCalledWith({
+      bot_id: 'a-share-research',
+      instrument: '600519.SH',
+      timeframe: '1h',
+      limit: 1000,
+      timerange: null,
+      adjustment: 'raw',
+      watch_indicators: { ma: [5, 20] },
+      side_layers: null,
+    });
     expect(store.backtestResult).toBeNull();
 
     store.chartData = chartResponse();
     store.backtestResult = backtestResult();
+    store.loadChart.mockClear();
     await wrapper.find('[data-test="adjustment-select"]').setValue('qfq');
+    await flushPromises();
 
-    expect(store.chartData).toBeNull();
+    expect(store.loadChart).toHaveBeenCalledWith({
+      bot_id: 'a-share-research',
+      instrument: '600519.SH',
+      timeframe: '1h',
+      limit: 1000,
+      timerange: null,
+      adjustment: 'qfq',
+      watch_indicators: { ma: [5, 20] },
+      side_layers: null,
+    });
     expect(store.backtestResult).toBeNull();
   });
 
-  it('clears stale chart and backtest data when SMA changes', async () => {
+  it('automatically refreshes chart data when SMA changes', async () => {
     const { pinia, store } = installResearchStore();
     const wrapper = mountResearchView(pinia);
     await flushPromises();
 
     store.chartData = chartResponse();
     store.backtestResult = backtestResult();
+    store.loadChart.mockClear();
     await wrapper.find('[data-test="sma-fast"]').setValue('8');
-    expect(store.chartData).toBeNull();
+    await flushPromises();
+    expect(store.loadChart).toHaveBeenCalledWith({
+      bot_id: 'a-share-research',
+      instrument: '600519.SH',
+      timeframe: '1d',
+      limit: 1000,
+      timerange: null,
+      adjustment: 'raw',
+      watch_indicators: { ma: [8, 20] },
+      side_layers: null,
+    });
     expect(store.backtestResult).toBeNull();
 
     store.chartData = chartResponse();
     store.backtestResult = backtestResult();
+    store.loadChart.mockClear();
     await wrapper.find('[data-test="sma-slow"]').setValue('30');
-    expect(store.chartData).toBeNull();
+    await flushPromises();
+    expect(store.loadChart).toHaveBeenCalledWith({
+      bot_id: 'a-share-research',
+      instrument: '600519.SH',
+      timeframe: '1d',
+      limit: 1000,
+      timerange: null,
+      adjustment: 'raw',
+      watch_indicators: { ma: [8, 30] },
+      side_layers: null,
+    });
     expect(store.backtestResult).toBeNull();
   });
 
@@ -364,6 +575,7 @@ describe('ResearchView', () => {
   });
 
   it('does not refresh or backtest when selected instrument is invalid', async () => {
+    vi.useFakeTimers();
     const { pinia, store } = installResearchStore();
     const wrapper = mountResearchView(pinia);
     await flushPromises();
@@ -373,16 +585,89 @@ describe('ResearchView', () => {
     store.runBacktest.mockClear();
     await flushPromises();
 
-    expect(wrapper.find<HTMLButtonElement>('[data-test="refresh-chart"]').element.disabled).toBe(
-      true,
-    );
     expect(wrapper.find<HTMLButtonElement>('[data-test="run-backtest"]').element.disabled).toBe(
       true,
     );
-    await wrapper.find('[data-test="refresh-chart"]').trigger('click');
+    vi.advanceTimersByTime(900_000);
+    await flushPromises();
     await wrapper.find('[data-test="run-backtest"]').trigger('click');
 
     expect(store.loadChart).not.toHaveBeenCalled();
     expect(store.runBacktest).not.toHaveBeenCalled();
+  });
+
+  it('disables chart and backtest actions while their requests are loading', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.chartRequestState.loading = true;
+    store.backtestRequestState.loading = true;
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find<HTMLButtonElement>('[data-test="run-backtest"]').element.disabled).toBe(
+      true,
+    );
+    expect(wrapper.find('[data-test="research-auto-refresh-status"]').text()).toBe('Refreshing');
+  });
+
+  it('renders chart and backtest request errors', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.chartRequestState.error = 'Chart adjustment is not implemented.';
+    store.backtestRequestState.error = 'Backtest request failed.';
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-test="research-chart-error"]').text()).toBe(
+      'Chart adjustment is not implemented.',
+    );
+    expect(wrapper.find('[data-test="research-backtest-error"]').text()).toBe(
+      'Backtest request failed.',
+    );
+  });
+
+  it('catches refresh chart request failures and renders the store error', async () => {
+    vi.useFakeTimers();
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.chartRequestState.error = null;
+    store.loadChart = vi.fn(async () => {
+      store.chartRequestState.error = 'Chart request failed.';
+      throw new Error('Chart request failed.');
+    });
+
+    vi.advanceTimersByTime(900_000);
+    await flushPromises();
+
+    expect(wrapper.find('[data-test="research-chart-error"]').text()).toBe(
+      'Chart request failed.',
+    );
+  });
+
+  it('shows only the selected instrument timeframes', async () => {
+    const { pinia, store } = installResearchStore();
+    const wrapper = mountResearchView(pinia);
+    await flushPromises();
+
+    store.instruments = [
+      instrument('600519.SH', '600519', 'Kweichow Moutai', ['1d', '1h']),
+      instrument('000001.SZ', '000001', 'Ping An Bank', ['5m']),
+    ];
+    store.selectedInstrument = '000001.SZ';
+    await flushPromises();
+
+    const options = wrapper
+      .find('[data-test="timeframe-select"]')
+      .findAll('option')
+      .map((option) => option.text());
+
+    expect(options).toEqual(['5m']);
+    expect(wrapper.find<HTMLSelectElement>('[data-test="timeframe-select"]').element.value).toBe(
+      '5m',
+    );
   });
 });

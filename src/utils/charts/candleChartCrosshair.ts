@@ -12,6 +12,12 @@ export type GridRect = {
   height: number;
 };
 
+export type TimeAxisGridProjection = {
+  gridIndex: number;
+  x: number;
+  rect: GridRect;
+};
+
 type ChartLike = {
   convertFromPixel?: (
     finder: Record<string, unknown>,
@@ -120,12 +126,20 @@ export function findNearestCandleIndex(
   return timestamp - previous.timestamp <= next.timestamp - timestamp ? previous.index : next.index;
 }
 
-export function getTimeValueAtPixel(chart: ChartLike, x: number): number | undefined {
-  return readDataValue(chart.convertFromPixel?.({ xAxisIndex: 0 }, x));
+export function getTimeValueAtPixel(
+  chart: ChartLike,
+  xAxisIndex: number,
+  x: number,
+): number | undefined {
+  return readDataValue(chart.convertFromPixel?.({ xAxisIndex }, x));
 }
 
-export function getXAxisPixel(chart: ChartLike, timestamp: number): number | undefined {
-  return readPixelNumber(chart.convertToPixel?.({ xAxisIndex: 0 }, timestamp));
+export function getXAxisPixel(
+  chart: ChartLike,
+  xAxisIndex: number,
+  timestamp: number,
+): number | undefined {
+  return readPixelNumber(chart.convertToPixel?.({ xAxisIndex }, timestamp));
 }
 
 export function getMainGridPriceAtPixel(
@@ -156,12 +170,42 @@ export function containsAnyGrid(
   return false;
 }
 
+export function findContainingGridIndex(
+  chart: ChartLike,
+  gridCount: number,
+  x: number,
+  y: number,
+): number | undefined {
+  for (let gridIndex = 0; gridIndex < gridCount; gridIndex += 1) {
+    if (containsGrid(chart, gridIndex, x, y)) {
+      return gridIndex;
+    }
+  }
+  return undefined;
+}
+
 export function getGridRect(chart: ChartLike, gridIndex: number): GridRect | undefined {
   const grid = (chart.chart as EChartsModelHost | undefined)
     ?.getModel?.()
     .getComponent?.('grid', gridIndex);
   const rect = grid?.coordinateSystem?.getRect?.();
   return isGridRect(rect) ? rect : undefined;
+}
+
+export function getTimeAxisGridProjections(
+  chart: ChartLike,
+  gridCount: number,
+  timestamp: number,
+): TimeAxisGridProjection[] {
+  const projections: TimeAxisGridProjection[] = [];
+  for (let gridIndex = 0; gridIndex < gridCount; gridIndex += 1) {
+    const rect = getGridRect(chart, gridIndex);
+    const x = getXAxisPixel(chart, gridIndex, timestamp);
+    if (rect && x !== undefined) {
+      projections.push({ gridIndex, x, rect });
+    }
+  }
+  return projections;
 }
 
 export function getGridUnionRect(chart: ChartLike, gridCount: number): GridRect | undefined {

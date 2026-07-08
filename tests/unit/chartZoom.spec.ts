@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildInitialDataZoomRange,
   buildInitialTimeDataZoomRange,
   buildLinkedDataZoomOptions,
   captureDataZoomRange,
@@ -99,6 +100,20 @@ describe('chart zoom utilities', () => {
     expect(buildInitialTimeDataZoomRange(rows, 0, 3)).toEqual({
       startValue: 1_782_000_120_000,
       endValue: 1_782_000_240_000,
+    });
+  });
+
+  it('builds the initial zoom window from a generic display x column', () => {
+    const rows = [
+      [1_782_000_000_000, 0],
+      [1_782_003_600_000, 1],
+      [1_782_090_000_000, 2],
+      [1_782_093_600_000, 3],
+    ];
+
+    expect(buildInitialDataZoomRange(rows, 1, 2)).toEqual({
+      startValue: 2,
+      endValue: 3,
     });
   });
 });

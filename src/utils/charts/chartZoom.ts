@@ -71,13 +71,21 @@ export function buildInitialTimeDataZoomRange(
   dateColumn: number,
   visibleCandleCount: number,
 ): DataZoomWindow | undefined {
-  if (dateColumn < 0 || rows.length === 0) {
+  return buildInitialDataZoomRange(rows, dateColumn, visibleCandleCount);
+}
+
+export function buildInitialDataZoomRange(
+  rows: number[][],
+  axisColumn: number,
+  visibleCandleCount: number,
+): DataZoomWindow | undefined {
+  if (axisColumn < 0 || rows.length === 0) {
     return undefined;
   }
 
   let endValue: number | undefined;
   for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const value = rows[index]?.[dateColumn];
+    const value = rows[index]?.[axisColumn];
     if (isFiniteNumber(value)) {
       endValue = value;
       break;
@@ -85,8 +93,8 @@ export function buildInitialTimeDataZoomRange(
   }
   const visibleRows = Math.max(1, Math.floor(visibleCandleCount));
   const startIndex = Math.max(0, rows.length - visibleRows);
-  const startValue = rows.slice(startIndex).find((row) => isFiniteNumber(row[dateColumn]))?.[
-    dateColumn
+  const startValue = rows.slice(startIndex).find((row) => isFiniteNumber(row[axisColumn]))?.[
+    axisColumn
   ];
 
   if (!isFiniteNumber(startValue) || !isFiniteNumber(endValue)) {

@@ -168,7 +168,7 @@ describe('useResearchChartAutoRefresh', () => {
     expect(autoRefresh.refreshStatus.value).toBe('active');
   });
 
-  it('resets the next scheduled tick when the refresh key changes', async () => {
+  it('refreshes immediately and resets the next scheduled tick when the refresh key changes', async () => {
     const refreshKey = ref('600519.SH|1m|raw|5|20');
     const { refreshChart, wrapper } = mountAutoRefresh({ refreshKey });
     track(wrapper);
@@ -177,11 +177,35 @@ describe('useResearchChartAutoRefresh', () => {
     vi.advanceTimersByTime(9_000);
     refreshKey.value = '600519.SH|1m|qfq|5|20';
     await nextTick();
+    await Promise.resolve();
+
+    expect(refreshChart).toHaveBeenCalledTimes(1);
+
     vi.advanceTimersByTime(9_000);
+
+    expect(refreshChart).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(1_000);
+    await Promise.resolve();
+
+    expect(refreshChart).toHaveBeenCalledTimes(2);
+  });
+
+  it('refreshes the latest pending key after loading finishes', async () => {
+    const isLoading = ref(true);
+    const refreshKey = ref('600519.SH|1m|raw|5|20');
+    const { refreshChart, wrapper } = mountAutoRefresh({ isLoading, refreshKey });
+    track(wrapper);
+    await nextTick();
+
+    refreshKey.value = '600519.SH|1m|qfq|5|20';
+    await nextTick();
+    await Promise.resolve();
 
     expect(refreshChart).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1_000);
+    isLoading.value = false;
+    await nextTick();
     await Promise.resolve();
 
     expect(refreshChart).toHaveBeenCalledTimes(1);

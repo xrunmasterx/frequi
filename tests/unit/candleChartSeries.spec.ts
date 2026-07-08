@@ -5,6 +5,7 @@ import { ChartType } from '@/types';
 import {
   generateAreaCandleSeries,
   generateCandleSeries,
+  getStableSeriesColor,
 } from '@/utils/charts/candleChartSeries';
 import * as echarts from 'echarts';
 
@@ -75,6 +76,28 @@ describe('candle chart series metadata labels', () => {
     );
 
     expect(series.name).toBe('RSI(14) - Watch');
+  });
+
+  it('uses stable fallback color and id when plot config omits color', () => {
+    const first = generateCandleSeries(0, 5, 'watch_rsi14', { type: 'line' });
+    const second = generateCandleSeries(0, 5, 'watch_rsi14', { type: 'line' });
+    const itemStyle = first.itemStyle as { color?: string };
+
+    expect(first.id).toBe('plot:0:watch_rsi14');
+    expect(itemStyle.color).toBe(getStableSeriesColor('watch_rsi14'));
+    expect(first.itemStyle).toEqual(second.itemStyle);
+  });
+
+  it('uses a separate stable id for area fill series', () => {
+    const series = generateAreaCandleSeries(
+      0,
+      5,
+      'watch_rsi14',
+      { type: 'line', color: '#fff' },
+      2,
+    );
+
+    expect(series.id).toBe('plot:2:watch_rsi14:area');
   });
 });
 

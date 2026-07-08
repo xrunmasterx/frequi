@@ -29,11 +29,45 @@ export interface ResearchInstrument {
   symbol: string;
   currency: string;
   asset_type: string;
+  available_timeframes: string[];
   display_name?: string | null;
 }
 
 export interface ResearchInstrumentsResponse {
   instruments: ResearchInstrument[];
+}
+
+export type ResearchSideDataKind = 'feature' | 'event' | 'document';
+
+export interface ResearchDatasetDescriptor {
+  dataset_id: string;
+  kind: ResearchSideDataKind;
+  market: ResearchMarket;
+  scope: 'instrument' | 'market' | 'sector';
+  storage_format: 'csv' | 'jsonl';
+  timeframe?: string | null;
+  available: boolean;
+  start?: string | null;
+  stop?: string | null;
+  provider?: string | null;
+  provider_version?: string | null;
+  manifest_run_id?: string | null;
+  warnings: string[];
+}
+
+export interface ResearchDatasetsResponse {
+  datasets: ResearchDatasetDescriptor[];
+}
+
+export interface ResearchSideLayersPayload {
+  features?: string[];
+  events?: string[];
+  documents?: string[];
+}
+
+export interface ResearchRequestState {
+  loading: boolean;
+  error: string | null;
 }
 
 export interface ResearchChartPayload {
@@ -44,6 +78,7 @@ export interface ResearchChartPayload {
   timerange?: string | null;
   adjustment?: 'raw' | 'qfq' | 'hfq';
   watch_indicators?: ChartIndicatorPayload;
+  side_layers?: ResearchSideLayersPayload | null;
 }
 
 export interface ResearchBacktestPayload {

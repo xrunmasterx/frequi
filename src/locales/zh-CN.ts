@@ -261,6 +261,8 @@ export const zhCN = {
     refreshChart: '刷新图表',
     chart: '行情图表',
     noChartData: '暂无图表数据',
+    dataCoverage: '数据',
+    warnings: '警告',
     smaFast: 'SMA 快线',
     smaSlow: 'SMA 慢线',
     initialCash: '初始资金',

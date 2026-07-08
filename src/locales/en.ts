@@ -266,6 +266,8 @@ export const en = {
     refreshChart: 'Refresh chart',
     chart: 'Market chart',
     noChartData: 'No chart data loaded',
+    dataCoverage: 'Data',
+    warnings: 'Warnings',
     smaFast: 'SMA fast',
     smaSlow: 'SMA slow',
     initialCash: 'Initial cash',

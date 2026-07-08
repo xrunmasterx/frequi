@@ -57,6 +57,7 @@ export function useResearchChartAutoRefresh(
 
   let refreshTimer: number | undefined;
   let isDisposed = false;
+  let hasPendingRefresh = false;
 
   function clearRefreshTimer() {
     if (refreshTimer === undefined) {
@@ -68,10 +69,17 @@ export function useResearchChartAutoRefresh(
   }
 
   async function runRefreshNow() {
-    if (!autoRefreshEnabled.value || !isVisible.value || options.isLoading.value) {
+    if (!autoRefreshEnabled.value || !isVisible.value) {
+      hasPendingRefresh = false;
       return;
     }
 
+    if (options.isLoading.value) {
+      hasPendingRefresh = true;
+      return;
+    }
+
+    hasPendingRefresh = false;
     try {
       await options.refreshChart();
     } catch {
@@ -109,7 +117,22 @@ export function useResearchChartAutoRefresh(
   watch(
     () => [options.active.value, options.canRefresh.value, options.timeframe.value, refreshKey.value],
     () => {
-      scheduleRefresh();
+      void runRefreshNow().finally(() => {
+        scheduleRefresh();
+      });
+    },
+  );
+
+  watch(
+    () => options.isLoading.value,
+    (isLoading) => {
+      if (isLoading || !hasPendingRefresh) {
+        return;
+      }
+
+      void runRefreshNow().finally(() => {
+        scheduleRefresh();
+      });
     },
   );
 

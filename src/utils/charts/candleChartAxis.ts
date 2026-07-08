@@ -3,6 +3,8 @@ export type TimeAxisDomain = {
   max: number;
 };
 
+export const REAL_TIMESTAMP_LOWER_BOUND_MS = Date.UTC(2000, 0, 1);
+
 export function createCrosshairLineStyle() {
   return {
     color: '#cccccc',
@@ -51,6 +53,10 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+export function isLikelyMillisecondTimestamp(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= REAL_TIMESTAMP_LOWER_BOUND_MS;
+}
+
 export function getTimeAxisDomain(
   rows: number[][],
   dateColumn: number,
@@ -73,6 +79,13 @@ export function getTimeAxisDomain(
   }
 
   return { min, max };
+}
+
+export function getAxisDomain(
+  rows: number[][],
+  axisColumn: number,
+): TimeAxisDomain | undefined {
+  return getTimeAxisDomain(rows, axisColumn);
 }
 
 export function withTimeAxisDomain<const TAxis extends Record<string, unknown>>(
@@ -101,6 +114,37 @@ export function withLinkedTimeAxisMapping<const TAxis extends Record<string, unk
       ...axis,
       boundaryGap,
       containShape: false,
+    },
+    domain,
+  );
+}
+
+export function withLinkedValueAxisMapping<const TAxis extends Record<string, unknown>>(
+  axis: TAxis,
+  domain: TimeAxisDomain | undefined,
+  formatter?: (value: unknown) => string,
+) {
+  const existingAxisLabel =
+    axis.axisLabel && typeof axis.axisLabel === 'object' && !Array.isArray(axis.axisLabel)
+      ? axis.axisLabel
+      : {};
+
+  return withTimeAxisDomain(
+    {
+      ...axis,
+      boundaryGap: [0, 0] as [number, number],
+      containShape: false,
+      minInterval: 1,
+      maxInterval: 1,
+      ...(formatter
+        ? {
+            axisLabel: {
+              ...existingAxisLabel,
+              formatter,
+              hideOverlap: true,
+            },
+          }
+        : {}),
     },
     domain,
   );

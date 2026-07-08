@@ -5,12 +5,16 @@ import { nextTick } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import CandleChart from '@/components/charts/CandleChart.vue';
-import { ChartType, type PairHistory, type PlotConfig } from '@/types';
+import { ChartType, type ChartResponseMeta, type PairHistory, type PlotConfig } from '@/types';
 
-const { dispatchActionCalls, setOptionCalls } = vi.hoisted(() => ({
-  dispatchActionCalls: [] as Array<Record<string, unknown>>,
-  setOptionCalls: [] as EChartsOption[],
-}));
+const { dispatchActionCalls, setOptionCalls, convertFromPixelCalls, hoverGridIndex, xAxisValue } =
+  vi.hoisted(() => ({
+    dispatchActionCalls: [] as Array<Record<string, unknown>>,
+    setOptionCalls: [] as EChartsOption[],
+    convertFromPixelCalls: [] as Array<Record<string, unknown>>,
+    hoverGridIndex: { value: 0 },
+    xAxisValue: { value: Date.UTC(2026, 6, 5, 12, 1, 0) },
+  }));
 
 vi.mock('vue-echarts', async () => {
   const { defineComponent, h } = await import('vue');
@@ -27,11 +31,12 @@ vi.mock('vue-echarts', async () => {
             dispatchActionCalls.push(action);
           },
           containPixel(finder: Record<string, unknown>) {
-            return Number(finder.gridIndex) === 0;
+            return Number(finder.gridIndex) === hoverGridIndex.value;
           },
           convertFromPixel(finder: Record<string, unknown>, value: number | number[]) {
-            if (finder.xAxisIndex === 0) {
-              return Date.UTC(2026, 6, 5, 12, 1, 0);
+            convertFromPixelCalls.push(finder);
+            if (finder.xAxisIndex === hoverGridIndex.value) {
+              return xAxisValue.value;
             }
             if (finder.seriesIndex === 0 && Array.isArray(value)) {
               return [Date.UTC(2026, 6, 5, 12, 1, 0), 105];
@@ -110,6 +115,54 @@ function buildDataset(): PairHistory {
   };
 }
 
+function buildAshareTradingSessionDataset(): PairHistory & { meta: ChartResponseMeta } {
+  const start = Date.UTC(2026, 6, 5, 12, 0, 0);
+
+  return {
+    strategy: 'TestStrategy',
+    pair: '688017.SH',
+    timeframe: '1m',
+    timeframe_ms: 60_000,
+    columns: ['__date_ts', 'open', 'high', 'low', 'close', 'volume', '__display_x'],
+    all_columns: ['__date_ts', 'open', 'high', 'low', 'close', 'volume', '__display_x'],
+    annotations: [],
+    data: [
+      [start, 100, 104, 99, 103, 10, 0],
+      [start + 60_000, 103, 106, 101, 105, 11, 1],
+      [start + 120_000, 105, 107, 102, 104, 12, 2],
+    ],
+    length: 3,
+    buy_signals: 0,
+    sell_signals: 0,
+    enter_long_signals: 0,
+    exit_long_signals: 0,
+    enter_short_signals: 0,
+    exit_short_signals: 0,
+    last_analyzed: start + 120_000,
+    data_start_ts: start,
+    data_start: '2026-07-05 12:00:00+00:00',
+    data_stop: '2026-07-05 12:02:00+00:00',
+    data_stop_ts: start + 120_000,
+    meta: {
+      schema_version: 1,
+      window: {
+        requested_count: 3,
+        returned_count: 3,
+        warmup_count: 0,
+        last_candle_complete: true,
+      },
+      axis: {
+        mode: 'trading_session',
+        source_column: '__date_ts',
+        display_column: '__display_x',
+        timezone: 'Asia/Shanghai',
+      },
+      layers: [],
+      warnings: [],
+    },
+  };
+}
+
 function buildPlotConfig(): PlotConfig {
   return {
     main_plot: {},
@@ -124,10 +177,20 @@ function buildPlotConfig(): PlotConfig {
   };
 }
 
+async function flushCrosshairFrame() {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+  await nextTick();
+}
+
 describe('CandleChart crosshair axis options', () => {
   beforeEach(() => {
     dispatchActionCalls.length = 0;
     setOptionCalls.length = 0;
+    convertFromPixelCalls.length = 0;
+    hoverGridIndex.value = 0;
+    xAxisValue.value = Date.UTC(2026, 6, 5, 12, 1, 0);
     setActivePinia(createPinia());
   });
 
@@ -291,11 +354,118 @@ describe('CandleChart crosshair axis options', () => {
 
     await nextTick();
     await wrapper.find('.echarts-stub').trigger('mousemove');
+    await flushCrosshairFrame();
 
     expect(dispatchActionCalls).toContainEqual({
       type: 'showTip',
       seriesIndex: 0,
       dataIndex: 1,
     });
+  });
+
+  it('uses the hovered grid x-axis to resolve the selected candle timestamp', async () => {
+    hoverGridIndex.value = 2;
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const wrapper = mount(CandleChart, {
+      props: {
+        trades: [],
+        dataset: buildDataset(),
+        heikinAshi: false,
+        showMarkArea: false,
+        useUTC: false,
+        plotConfig: buildPlotConfig(),
+        theme: 'dark',
+        colorUp: '#14b8a6',
+        colorDown: '#ef4444',
+        labelSide: 'right',
+        startCandleCount: 40,
+      },
+      global: {
+        plugins: [pinia],
+      },
+    });
+
+    await nextTick();
+    await wrapper.find('.echarts-stub').trigger('mousemove');
+    await flushCrosshairFrame();
+
+    expect(convertFromPixelCalls).toContainEqual({ xAxisIndex: 2 });
+    expect(dispatchActionCalls).toContainEqual({
+      type: 'showTip',
+      seriesIndex: 0,
+      dataIndex: 1,
+    });
+  });
+
+  it('selects the real candle row from a synthetic trading-session x value', async () => {
+    xAxisValue.value = 1;
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const wrapper = mount(CandleChart, {
+      props: {
+        trades: [],
+        dataset: buildAshareTradingSessionDataset(),
+        heikinAshi: false,
+        showMarkArea: false,
+        useUTC: false,
+        plotConfig: { main_plot: {}, subplots: {} },
+        theme: 'dark',
+        colorUp: '#14b8a6',
+        colorDown: '#ef4444',
+        labelSide: 'right',
+        startCandleCount: 40,
+      },
+      global: {
+        plugins: [pinia],
+      },
+    });
+
+    await nextTick();
+    await wrapper.find('.echarts-stub').trigger('mousemove');
+    await flushCrosshairFrame();
+
+    expect(dispatchActionCalls).toContainEqual({
+      type: 'showTip',
+      seriesIndex: 0,
+      dataIndex: 1,
+    });
+  });
+
+  it('does not send graphic setOption calls while moving the crosshair', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+
+    const wrapper = mount(CandleChart, {
+      props: {
+        trades: [],
+        dataset: buildDataset(),
+        heikinAshi: false,
+        showMarkArea: false,
+        useUTC: false,
+        plotConfig: buildPlotConfig(),
+        theme: 'dark',
+        colorUp: '#14b8a6',
+        colorDown: '#ef4444',
+        labelSide: 'right',
+        startCandleCount: 40,
+      },
+      global: {
+        plugins: [pinia],
+      },
+    });
+
+    await nextTick();
+    setOptionCalls.length = 0;
+    await wrapper.find('.echarts-stub').trigger('mousemove');
+    await flushCrosshairFrame();
+
+    expect(
+      setOptionCalls.some(
+        (option) => 'graphic' in option && !('series' in option) && !('xAxis' in option),
+      ),
+    ).toBe(false);
   });
 });

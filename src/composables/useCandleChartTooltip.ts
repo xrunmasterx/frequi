@@ -1,7 +1,8 @@
 import type { EChartsOption, SeriesOption, TooltipComponentFormatterCallbackParams } from 'echarts';
 import type { Ref } from 'vue';
 import { format as echartsFormat } from 'echarts';
-import type { ChartLayerSource, ChartResponseMeta } from '@/types/candleTypes';
+import type { ChartLayerPoint, ChartLayerSource, ChartResponseMeta } from '@/types/candleTypes';
+import { isLikelyMillisecondTimestamp } from '@/utils/charts/candleChartAxis';
 import { getSeriesMetaByColumn, getSeriesSourceLabel } from '@/utils/charts/chartSeriesMeta';
 
 type CandleTooltipParam = Exclude<
@@ -47,8 +48,11 @@ const TOOLTIP_SOURCE_PRIORITY: Record<ChartLayerSource, number> = {
   strategy: 1,
   watch: 2,
   market: 3,
-  execution: 4,
-  recomputed: 5,
+  feature: 4,
+  event: 5,
+  document: 6,
+  execution: 7,
+  recomputed: 8,
 };
 
 const DECISION_SNAPSHOT_GROUP_TITLE = 'Bot Decision';
@@ -289,6 +293,34 @@ export function useCandleChartTooltip(
     }
   }
 
+  function formatPointPayloadValue(value: unknown): string {
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return formatTooltipValue(value);
+  }
+
+  function appendGenericPointRows(
+    rows: CandleTooltipRow[],
+    point: ChartLayerPoint,
+  ) {
+    if (isRenderableTooltipValue(point.label)) {
+      rows.push({
+        label: 'Label',
+        value: formatPointPayloadValue(point.label),
+      });
+    }
+
+    for (const [key, value] of Object.entries(point.payload ?? {})) {
+      if (isRenderableTooltipValue(value)) {
+        rows.push({
+          label: key,
+          value: formatPointPayloadValue(value),
+        });
+      }
+    }
+  }
+
   function formatDecisionSnapshotPointRows(timestamp: number): CandleTooltipRow[] {
     const rows: CandleTooltipRow[] = [];
     for (const layer of getChartResponseMeta()?.layers ?? []) {
@@ -303,6 +335,37 @@ export function useCandleChartTooltip(
       }
     }
     return rows;
+  }
+
+  function appendGenericPointGroups(
+    groupedLines: Map<string, CandleTooltipGroup>,
+    timestamp: number,
+    firstIndex: number,
+  ) {
+    for (const layer of getChartResponseMeta()?.layers ?? []) {
+      if (layer.source !== 'event' && layer.source !== 'document') {
+        continue;
+      }
+
+      const lines: CandleTooltipRow[] = [];
+      for (const point of layer.points ?? []) {
+        if (point.timestamp === timestamp) {
+          appendGenericPointRows(lines, point);
+        }
+      }
+      if (lines.length === 0) {
+        continue;
+      }
+
+      const tooltipGroup = groupedLines.get(layer.label) ?? {
+        title: layer.label,
+        source: layer.source,
+        lines: [],
+        firstIndex,
+      };
+      tooltipGroup.lines.push(...lines);
+      groupedLines.set(layer.label, tooltipGroup);
+    }
   }
 
   function sortMetadataGroupsInLegacySlots(groups: CandleTooltipGroup[]): CandleTooltipGroup[] {
@@ -326,20 +389,24 @@ export function useCandleChartTooltip(
 
   function getTooltipPointTimestamp(tooltipParams: CandleTooltipParam[]): number | undefined {
     const selectionTimestamp = selectedCrosshair?.value?.timestamp;
-    if (Number.isFinite(selectionTimestamp)) {
+    if (isLikelyMillisecondTimestamp(selectionTimestamp)) {
       return selectionTimestamp;
     }
 
     for (const param of tooltipParams) {
+      const rowTimestamp = firstTimestampFromValue(param.value);
+      if (rowTimestamp !== undefined) {
+        return rowTimestamp;
+      }
+
       const axisValueTimestamp = Number(param.axisValue);
-      if (Number.isFinite(axisValueTimestamp)) {
+      if (isLikelyMillisecondTimestamp(axisValueTimestamp)) {
         return axisValueTimestamp;
       }
-      if (Array.isArray(param.value)) {
-        const valueTimestamp = Number(param.value[0]);
-        if (Number.isFinite(valueTimestamp)) {
-          return valueTimestamp;
-        }
+
+      const axisLabelTimestamp = Number(param.axisValueLabel);
+      if (isLikelyMillisecondTimestamp(axisLabelTimestamp)) {
+        return axisLabelTimestamp;
       }
     }
     return undefined;
@@ -355,18 +422,17 @@ export function useCandleChartTooltip(
     }
 
     const lines = formatDecisionSnapshotPointRows(timestamp);
-    if (lines.length === 0) {
-      return;
+    if (lines.length > 0) {
+      const tooltipGroup = groupedLines.get(DECISION_SNAPSHOT_GROUP_TITLE) ?? {
+        title: DECISION_SNAPSHOT_GROUP_TITLE,
+        source: 'decision_snapshot',
+        lines: [],
+        firstIndex: tooltipParams.length,
+      };
+      tooltipGroup.lines.push(...lines);
+      groupedLines.set(DECISION_SNAPSHOT_GROUP_TITLE, tooltipGroup);
     }
-
-    const tooltipGroup = groupedLines.get(DECISION_SNAPSHOT_GROUP_TITLE) ?? {
-      title: DECISION_SNAPSHOT_GROUP_TITLE,
-      source: 'decision_snapshot',
-      lines: [],
-      firstIndex: tooltipParams.length,
-    };
-    tooltipGroup.lines.push(...lines);
-    groupedLines.set(DECISION_SNAPSHOT_GROUP_TITLE, tooltipGroup);
+    appendGenericPointGroups(groupedLines, timestamp, tooltipParams.length);
   }
 
   /**
@@ -497,14 +563,27 @@ export function useCandleChartTooltip(
     >${formatTooltipHtmlValue(echartsFormat.encodeHTML(row.value))}</span></div>`;
   }
 
+  function firstTimestampFromValue(value: unknown): number | undefined {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+    const candidate = Number(value[0]);
+    return isLikelyMillisecondTimestamp(candidate) ? candidate : undefined;
+  }
+
   function formatTooltipTimestamp(param: CandleTooltipParam): string {
+    const rowTimestamp = firstTimestampFromValue(param.value);
+    if (rowTimestamp !== undefined) {
+      return timestampms(rowTimestamp);
+    }
+
     const axisValueTimestamp = Number(param.axisValue);
-    if (Number.isFinite(axisValueTimestamp)) {
+    if (isLikelyMillisecondTimestamp(axisValueTimestamp)) {
       return timestampms(axisValueTimestamp);
     }
 
     const axisLabelTimestamp = Number(param.axisValueLabel);
-    if (Number.isFinite(axisLabelTimestamp)) {
+    if (isLikelyMillisecondTimestamp(axisLabelTimestamp)) {
       return timestampms(axisLabelTimestamp);
     }
 

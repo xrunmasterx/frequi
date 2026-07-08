@@ -11,6 +11,9 @@ const adjustment = ref<NonNullable<ResearchChartPayload['adjustment']>>('raw');
 const initialCash = ref(100000);
 const smaFast = ref(5);
 const smaSlow = ref(20);
+const selectedFeatureDataset = ref('');
+const selectedEventDataset = ref('');
+const selectedDocumentDataset = ref('');
 
 const plotConfig = computed<PlotConfig>(
   () => researchStore.chartData?.plot_config ?? { main_plot: {}, subplots: {} },
@@ -32,19 +35,45 @@ const instrumentOptions = computed(() =>
   })),
 );
 
-const timeframeOptions = [
-  { label: '1d', value: '1d' },
-  { label: '1h', value: '1h' },
-  { label: '30m', value: '30m' },
-  { label: '15m', value: '15m' },
-  { label: '5m', value: '5m' },
-];
+const selectedResearchInstrument = computed(() =>
+  researchStore.instruments.find(
+    (instrument) => instrument.key === researchStore.selectedInstrument,
+  ),
+);
+
+const selectedAvailableTimeframes = computed(() => {
+  const availableTimeframes = selectedResearchInstrument.value?.available_timeframes ?? [];
+  return availableTimeframes.length > 0 ? availableTimeframes : ['1d'];
+});
+
+const timeframeOptions = computed(() =>
+  selectedAvailableTimeframes.value.map((availableTimeframe) => ({
+    label: availableTimeframe,
+    value: availableTimeframe,
+  })),
+);
 
 const adjustmentOptions = computed(() => [
   { label: t('research.adjustmentRaw'), value: 'raw' },
   { label: t('research.adjustmentQfq'), value: 'qfq' },
   { label: t('research.adjustmentHfq'), value: 'hfq' },
 ]);
+
+function getDatasetOptions(kind: 'feature' | 'event' | 'document') {
+  return [
+    { label: 'None', value: '' },
+    ...researchStore.datasets
+      .filter((dataset) => dataset.kind === kind && dataset.available)
+      .map((dataset) => ({
+        label: dataset.dataset_id,
+        value: dataset.dataset_id,
+      })),
+  ];
+}
+
+const featureDatasetOptions = computed(() => getDatasetOptions('feature'));
+const eventDatasetOptions = computed(() => getDatasetOptions('event'));
+const documentDatasetOptions = computed(() => getDatasetOptions('document'));
 
 const hasSelection = computed(
   () =>
@@ -54,6 +83,39 @@ const hasSelection = computed(
     ),
 );
 
+const chartRefreshKey = computed(() =>
+  [
+    researchStore.selectedBotId,
+    researchStore.selectedInstrument,
+    timeframe.value,
+    adjustment.value,
+    selectedFeatureDataset.value,
+    selectedEventDataset.value,
+    selectedDocumentDataset.value,
+    Number(smaFast.value),
+    Number(smaSlow.value),
+  ].join('|'),
+);
+
+const chartCredibilityText = computed(() => {
+  const chartData = researchStore.chartData;
+  if (!chartData) {
+    return '';
+  }
+
+  const segments = [
+    `${t('research.dataCoverage')}: ${chartData.data_start || '-'} -> ${
+      chartData.data_stop || '-'
+    }`,
+    `${t('research.adjustment')}: ${adjustment.value}`,
+  ];
+  if (chartData.warnings.length > 0) {
+    segments.push(`${t('research.warnings')}: ${chartData.warnings.join(' | ')}`);
+  }
+
+  return segments.join(' | ');
+});
+
 function clearResearchResults() {
   researchStore.chartData = null;
   researchStore.backtestResult = null;
@@ -61,6 +123,12 @@ function clearResearchResults() {
 
 function clearBacktestResult() {
   researchStore.backtestResult = null;
+}
+
+function clearSideLayerSelections() {
+  selectedFeatureDataset.value = '';
+  selectedEventDataset.value = '';
+  selectedDocumentDataset.value = '';
 }
 
 function ensureSelectedInstrument() {
@@ -75,6 +143,14 @@ function ensureSelectedInstrument() {
   researchStore.selectedInstrument = researchStore.instruments[0]?.key ?? '';
 }
 
+function ensureValidTimeframe() {
+  if (selectedAvailableTimeframes.value.includes(timeframe.value)) {
+    return;
+  }
+
+  timeframe.value = selectedAvailableTimeframes.value[0] ?? '1d';
+}
+
 async function handleBotChange(nextBotId: string) {
   const botId = String(nextBotId);
   if (botId === researchStore.selectedBotId) {
@@ -83,21 +159,26 @@ async function handleBotChange(nextBotId: string) {
 
   researchStore.selectedBotId = botId;
   researchStore.selectedInstrument = '';
+  clearSideLayerSelections();
   clearResearchResults();
 
   await researchStore.loadInstruments();
   ensureSelectedInstrument();
+  ensureValidTimeframe();
+  await researchStore.loadDatasets();
   await refreshChart();
 }
 
-function handleInstrumentChange(nextInstrument: string) {
+async function handleInstrumentChange(nextInstrument: string) {
   const instrument = String(nextInstrument);
   if (instrument === researchStore.selectedInstrument) {
     return;
   }
 
   researchStore.selectedInstrument = instrument;
+  clearSideLayerSelections();
   clearResearchResults();
+  await researchStore.loadDatasets(instrument);
 }
 
 function handleTimeframeChange(nextTimeframe: string) {
@@ -143,38 +224,74 @@ function handleInitialCashChange(nextInitialCash: number | string) {
   clearBacktestResult();
 }
 
+function selectedDatasetList(datasetId: string): string[] {
+  return datasetId ? [datasetId] : [];
+}
+
+function buildSelectedSideLayers(): ResearchChartPayload['side_layers'] {
+  const sideLayers = {
+    features: selectedDatasetList(selectedFeatureDataset.value),
+    events: selectedDatasetList(selectedEventDataset.value),
+    documents: selectedDatasetList(selectedDocumentDataset.value),
+  };
+
+  return sideLayers.features.length > 0 ||
+    sideLayers.events.length > 0 ||
+    sideLayers.documents.length > 0
+    ? sideLayers
+    : null;
+}
+
 async function refreshChart() {
   if (!hasSelection.value) {
     return;
   }
 
-  await researchStore.loadChart({
-    bot_id: researchStore.selectedBotId,
-    instrument: researchStore.selectedInstrument,
-    timeframe: timeframe.value,
-    limit: settingsStore.chartDataCandleCount,
-    timerange: null,
-    adjustment: adjustment.value,
-    watch_indicators: { ma: [Number(smaFast.value), Number(smaSlow.value)] },
-  });
+  try {
+    await researchStore.loadChart({
+      bot_id: researchStore.selectedBotId,
+      instrument: researchStore.selectedInstrument,
+      timeframe: timeframe.value,
+      limit: settingsStore.chartDataCandleCount,
+      timerange: null,
+      adjustment: adjustment.value,
+      watch_indicators: { ma: [Number(smaFast.value), Number(smaSlow.value)] },
+      side_layers: buildSelectedSideLayers(),
+    });
+  } catch {
+    // Store request state owns user-visible research errors.
+  }
 }
+
+const researchAutoRefresh = useResearchChartAutoRefresh({
+  active: computed(() => true),
+  timeframe,
+  canRefresh: hasSelection,
+  isLoading: computed(() => researchStore.chartRequestState.loading),
+  refreshKey: chartRefreshKey,
+  refreshChart,
+});
 
 async function runBacktest() {
   if (!hasSelection.value) {
     return;
   }
 
-  await researchStore.runBacktest({
-    bot_id: researchStore.selectedBotId,
-    instrument: researchStore.selectedInstrument,
-    timeframe: timeframe.value,
-    initial_cash: Number(initialCash.value),
-    strategy: {
-      type: 'sma_cross',
-      fast: Number(smaFast.value),
-      slow: Number(smaSlow.value),
-    },
-  });
+  try {
+    await researchStore.runBacktest({
+      bot_id: researchStore.selectedBotId,
+      instrument: researchStore.selectedInstrument,
+      timeframe: timeframe.value,
+      initial_cash: Number(initialCash.value),
+      strategy: {
+        type: 'sma_cross',
+        fast: Number(smaFast.value),
+        slow: Number(smaSlow.value),
+      },
+    });
+  } catch {
+    // Store request state owns user-visible research errors.
+  }
 }
 
 function formatNumber(value: unknown, digits = 2): string {
@@ -199,8 +316,12 @@ onMounted(async () => {
   await researchStore.loadBots();
   await researchStore.loadInstruments();
   ensureSelectedInstrument();
+  ensureValidTimeframe();
+  await researchStore.loadDatasets();
   await refreshChart();
 });
+
+watch(selectedAvailableTimeframes, ensureValidTimeframe);
 </script>
 
 <template>
@@ -250,16 +371,40 @@ onMounted(async () => {
             @update:model-value="handleAdjustmentChange"
           />
         </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span>Feature data</span>
+          <USelect
+            v-model="selectedFeatureDataset"
+            :items="featureDatasetOptions"
+            class="w-full"
+            data-test="feature-dataset-select"
+          />
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span>Event data</span>
+          <USelect
+            v-model="selectedEventDataset"
+            :items="eventDatasetOptions"
+            class="w-full"
+            data-test="event-dataset-select"
+          />
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+          <span>Document data</span>
+          <USelect
+            v-model="selectedDocumentDataset"
+            :items="documentDatasetOptions"
+            class="w-full"
+            data-test="document-dataset-select"
+          />
+        </label>
         <div class="flex items-end">
-          <UButton
-            icon="i-mdi-refresh"
-            :disabled="!hasSelection"
-            class="w-full justify-center"
-            data-test="refresh-chart"
-            @click="refreshChart"
+          <span
+            class="min-h-9 w-full content-center text-center text-xs text-neutral-500 dark:text-neutral-400"
+            data-test="research-auto-refresh-status"
           >
-            {{ t('research.refreshChart') }}
-          </UButton>
+            {{ researchAutoRefresh.refreshLabel }}
+          </span>
         </div>
       </div>
     </section>
@@ -268,6 +413,20 @@ onMounted(async () => {
       <div class="mb-2 flex items-center justify-between gap-2">
         <span class="text-base font-semibold">{{ t('research.chart') }}</span>
         <span class="text-sm text-neutral-500">{{ researchStore.selectedInstrument }}</span>
+      </div>
+      <div
+        v-if="researchStore.chartRequestState.error"
+        class="mb-2 text-sm text-red-600 dark:text-red-400"
+        data-test="research-chart-error"
+      >
+        {{ researchStore.chartRequestState.error }}
+      </div>
+      <div
+        v-if="researchStore.chartData"
+        class="mb-2 text-xs text-neutral-500"
+        data-test="research-chart-credibility"
+      >
+        {{ chartCredibilityText }}
       </div>
       <div class="h-[48vh] min-h-80">
         <CandleChart
@@ -325,7 +484,8 @@ onMounted(async () => {
         <div class="flex items-end">
           <UButton
             icon="i-mdi-chart-timeline-variant"
-            :disabled="!hasSelection"
+            :disabled="!hasSelection || researchStore.backtestRequestState.loading"
+            :loading="researchStore.backtestRequestState.loading"
             class="w-full justify-center"
             data-test="run-backtest"
             @click="runBacktest"
@@ -336,6 +496,13 @@ onMounted(async () => {
       </div>
 
       <div class="border border-neutral-300 p-3 dark:border-neutral-700">
+        <div
+          v-if="researchStore.backtestRequestState.error"
+          class="mb-2 text-sm text-red-600 dark:text-red-400"
+          data-test="research-backtest-error"
+        >
+          {{ researchStore.backtestRequestState.error }}
+        </div>
         <div class="mb-2 text-sm font-semibold">{{ t('research.backtestSummary') }}</div>
         <div class="grid grid-cols-3 gap-2 text-sm">
           <div>

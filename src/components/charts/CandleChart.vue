@@ -37,28 +37,36 @@ import { CanvasRenderer } from 'echarts/renderers';
 import {
   createLinkedTimeAxisPointer,
   createMainPriceAxisPointer,
+  getAxisDomain,
   getTimeAxisDomain,
   withLinkedTimeAxisMapping,
+  withLinkedValueAxisMapping,
 } from '@/utils/charts/candleChartAxis';
 import {
-  buildInitialTimeDataZoomRange,
+  buildInitialDataZoomRange,
   buildLinkedDataZoomOptions,
   captureDataZoomRange,
   createAxisIndexes,
   restoreDataZoomRange,
 } from '@/utils/charts/chartZoom';
+import {
+  TRADING_SESSION_DISPLAY_COLUMN,
+  buildTradingSessionAxisDataset,
+  getChartAxisMode,
+  getTimestampForDisplayValue,
+  type CandleChartAxisMode,
+  type TradingSessionAxisDataset,
+} from '@/utils/charts/candleChartTradingAxis';
 import { formatIndicatorLabel, isIndicatorVisible } from '@/utils/charts/candleChartSeries';
 import {
-  buildCrosshairGraphics,
-  buildRemoveCrosshairGraphics,
-  containsAnyGrid,
   containsGrid,
   findNearestCandleIndex,
+  findContainingGridIndex,
   getGridRect,
-  getGridUnionRect,
   getMainGridPriceAtPixel,
+  getTimeAxisGridProjections,
   getTimeValueAtPixel,
-  getXAxisPixel,
+  type TimeAxisGridProjection,
   type CandleChartCrosshairSelection,
 } from '@/utils/charts/candleChartCrosshair';
 import { getPlotConfigKey } from '@/utils/charts/plotConfigKey';
@@ -126,10 +134,13 @@ const sellSignalColor = '#faba25';
 const shortexitSignalColor = '#faba25';
 
 const candleChart = useTemplateRef<InstanceType<typeof ECharts>>('candleChart');
+const crosshairOverlay = useTemplateRef<HTMLDivElement>('crosshairOverlay');
 const chartOptions = shallowRef<EChartsOption>({});
 const crosshairSelection = shallowRef<CandleChartCrosshairSelection>();
 const crosshairRows = shallowRef<number[][]>([]);
 const crosshairDateColumn = ref(-1);
+const crosshairXColumn = ref(-1);
+const crosshairAxisMode = ref<CandleChartAxisMode>('time');
 const crosshairGridCount = ref(0);
 const settingsStore = useSettingsStore();
 const { t } = useAppI18n();
@@ -171,11 +182,7 @@ usePercentageTool(
   toRef(() => props.dataset.timeframe_ms),
 );
 
-const { formatCandleTooltip } = useCandleChartTooltip(
-  chartOptions,
-  crosshairSelection,
-  chartMeta,
-);
+const { formatCandleTooltip } = useCandleChartTooltip(chartOptions, crosshairSelection, chartMeta);
 
 function formatPriceAxisPointerLabel(params: { value: unknown }) {
   const value = Number(params.value);
@@ -183,31 +190,234 @@ function formatPriceAxisPointerLabel(params: { value: unknown }) {
   return Number.isFinite(value) ? formatDecimal(value, 'en-EN') : '';
 }
 
+const crosshairVerticalLines = new Map<number, HTMLDivElement>();
+let crosshairHorizontalLine: HTMLDivElement | undefined;
+let crosshairPriceLabel: HTMLDivElement | undefined;
+let lastTooltipDataIndex: number | undefined;
+let pendingCrosshairPoint: { x: number; y: number } | undefined;
+let crosshairFrameId: number | undefined;
+
+function applyCrosshairLineStyle(element: HTMLDivElement) {
+  element.style.position = 'absolute';
+  element.style.pointerEvents = 'none';
+  element.style.borderColor = '#cccccc';
+  element.style.opacity = '1';
+  element.style.zIndex = '20';
+}
+
+function getCrosshairVerticalLine(gridIndex: number): HTMLDivElement | undefined {
+  const overlay = crosshairOverlay.value;
+  if (!overlay) {
+    return undefined;
+  }
+
+  const current = crosshairVerticalLines.get(gridIndex);
+  if (current) {
+    return current;
+  }
+
+  const line = document.createElement('div');
+  applyCrosshairLineStyle(line);
+  line.style.width = '0';
+  line.style.borderLeft = '1px dashed #cccccc';
+  overlay.appendChild(line);
+  crosshairVerticalLines.set(gridIndex, line);
+  return line;
+}
+
+function getCrosshairHorizontalLine(): HTMLDivElement | undefined {
+  const overlay = crosshairOverlay.value;
+  if (!overlay) {
+    return undefined;
+  }
+
+  if (!crosshairHorizontalLine) {
+    crosshairHorizontalLine = document.createElement('div');
+    applyCrosshairLineStyle(crosshairHorizontalLine);
+    crosshairHorizontalLine.style.height = '0';
+    crosshairHorizontalLine.style.borderTop = '1px dashed #cccccc';
+    overlay.appendChild(crosshairHorizontalLine);
+  }
+  return crosshairHorizontalLine;
+}
+
+function getCrosshairPriceLabel(): HTMLDivElement | undefined {
+  const overlay = crosshairOverlay.value;
+  if (!overlay) {
+    return undefined;
+  }
+
+  if (!crosshairPriceLabel) {
+    crosshairPriceLabel = document.createElement('div');
+    crosshairPriceLabel.style.position = 'absolute';
+    crosshairPriceLabel.style.pointerEvents = 'none';
+    crosshairPriceLabel.style.zIndex = '21';
+    crosshairPriceLabel.style.color = '#ffffff';
+    crosshairPriceLabel.style.font = '12px sans-serif';
+    crosshairPriceLabel.style.backgroundColor = '#111827';
+    crosshairPriceLabel.style.border = '1px solid #cccccc';
+    crosshairPriceLabel.style.padding = '3px 5px';
+    crosshairPriceLabel.style.whiteSpace = 'nowrap';
+    overlay.appendChild(crosshairPriceLabel);
+  }
+  return crosshairPriceLabel;
+}
+
+function getProjectionUnionRect(projections: TimeAxisGridProjection[]) {
+  const left = Math.min(...projections.map((projection) => projection.rect.x));
+  const top = Math.min(...projections.map((projection) => projection.rect.y));
+  const right = Math.max(
+    ...projections.map((projection) => projection.rect.x + projection.rect.width),
+  );
+  const bottom = Math.max(
+    ...projections.map((projection) => projection.rect.y + projection.rect.height),
+  );
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+function renderCrosshairVerticalLines(projections: TimeAxisGridProjection[]) {
+  if (projections.length === 0) {
+    hideCrosshairOverlay();
+    return;
+  }
+
+  const minX = Math.min(...projections.map((projection) => projection.x));
+  const maxX = Math.max(...projections.map((projection) => projection.x));
+  const visibleLineIndexes = new Set<number>();
+
+  if (maxX - minX <= 0.5) {
+    const line = getCrosshairVerticalLine(-1);
+    const rect = getProjectionUnionRect(projections);
+    if (line) {
+      line.style.display = 'block';
+      line.style.left = `${(minX + maxX) / 2}px`;
+      line.style.top = `${rect.y}px`;
+      line.style.height = `${rect.height}px`;
+    }
+    visibleLineIndexes.add(-1);
+  } else {
+    for (const projection of projections) {
+      const line = getCrosshairVerticalLine(projection.gridIndex);
+      if (line) {
+        line.style.display = 'block';
+        line.style.left = `${projection.x}px`;
+        line.style.top = `${projection.rect.y}px`;
+        line.style.height = `${projection.rect.height}px`;
+      }
+      visibleLineIndexes.add(projection.gridIndex);
+    }
+  }
+
+  for (const [gridIndex, line] of crosshairVerticalLines) {
+    if (!visibleLineIndexes.has(gridIndex)) {
+      line.style.display = 'none';
+    }
+  }
+}
+
+function renderCrosshairHorizontalLine(
+  horizontal:
+    | {
+        y: number;
+        rect: { x: number; y: number; width: number; height: number };
+        label: string;
+        labelSide: 'left' | 'right';
+      }
+    | undefined,
+) {
+  if (!horizontal) {
+    if (crosshairHorizontalLine) {
+      crosshairHorizontalLine.style.display = 'none';
+    }
+    if (crosshairPriceLabel) {
+      crosshairPriceLabel.style.display = 'none';
+    }
+    return;
+  }
+
+  const horizontalLine = getCrosshairHorizontalLine();
+  const priceLabel = getCrosshairPriceLabel();
+  if (!horizontalLine || !priceLabel) {
+    return;
+  }
+
+  const labelOnRight = horizontal.labelSide === 'right';
+  horizontalLine.style.display = 'block';
+  horizontalLine.style.left = `${horizontal.rect.x}px`;
+  horizontalLine.style.top = `${horizontal.y}px`;
+  horizontalLine.style.width = `${horizontal.rect.width}px`;
+
+  priceLabel.style.display = 'block';
+  priceLabel.textContent = horizontal.label;
+  priceLabel.style.left = labelOnRight
+    ? `${horizontal.rect.x + horizontal.rect.width + 4}px`
+    : `${horizontal.rect.x - 4}px`;
+  priceLabel.style.right = '';
+  priceLabel.style.top = `${horizontal.y}px`;
+  priceLabel.style.transform = labelOnRight ? 'translateY(-50%)' : 'translate(-100%, -50%)';
+}
+
+function renderCrosshairOverlay(
+  projections: TimeAxisGridProjection[],
+  horizontal?:
+    | {
+        y: number;
+        rect: { x: number; y: number; width: number; height: number };
+        label: string;
+        labelSide: 'left' | 'right';
+      }
+    | undefined,
+) {
+  renderCrosshairVerticalLines(projections);
+  renderCrosshairHorizontalLine(horizontal);
+}
+
+function hideCrosshairOverlay() {
+  for (const line of crosshairVerticalLines.values()) {
+    line.style.display = 'none';
+  }
+  if (crosshairHorizontalLine) {
+    crosshairHorizontalLine.style.display = 'none';
+  }
+  if (crosshairPriceLabel) {
+    crosshairPriceLabel.style.display = 'none';
+  }
+}
+
 function hideCrosshair() {
+  if (crosshairFrameId !== undefined) {
+    cancelAnimationFrame(crosshairFrameId);
+    crosshairFrameId = undefined;
+  }
+  pendingCrosshairPoint = undefined;
   crosshairSelection.value = undefined;
+  lastTooltipDataIndex = undefined;
+  hideCrosshairOverlay();
   candleChart.value?.dispatchAction({ type: 'hideTip' });
-  candleChart.value?.setOption({
-    graphic: buildRemoveCrosshairGraphics(),
-  } as EChartsOption);
 }
 
 function updateCrosshairGraphic(x: number, y: number) {
   const chart = candleChart.value;
-  if (!chart || !containsAnyGrid(chart, crosshairGridCount.value, x, y)) {
+  const hitGridIndex = chart
+    ? findContainingGridIndex(chart, crosshairGridCount.value, x, y)
+    : undefined;
+  if (!chart || hitGridIndex === undefined) {
     hideCrosshair();
     return;
   }
 
-  const pointerTimestamp = getTimeValueAtPixel(chart, x);
-  if (pointerTimestamp === undefined) {
+  const pointerXValue = getTimeValueAtPixel(chart, hitGridIndex, x);
+  if (pointerXValue === undefined) {
     hideCrosshair();
     return;
   }
 
   const dataIndex = findNearestCandleIndex(
     crosshairRows.value,
-    crosshairDateColumn.value,
-    pointerTimestamp,
+    crosshairAxisMode.value === 'trading_session'
+      ? crosshairXColumn.value
+      : crosshairDateColumn.value,
+    pointerXValue,
   );
   const selectedRow = dataIndex === undefined ? undefined : crosshairRows.value[dataIndex];
   const timestamp =
@@ -219,9 +429,16 @@ function updateCrosshairGraphic(x: number, y: number) {
     return;
   }
 
-  const xPixel = getXAxisPixel(chart, timestamp);
-  const verticalRect = getGridUnionRect(chart, crosshairGridCount.value);
-  if (xPixel === undefined || !verticalRect) {
+  const projectionValue =
+    crosshairAxisMode.value === 'trading_session' && selectedRow
+      ? Number(selectedRow[crosshairXColumn.value])
+      : timestamp;
+  const projections = getTimeAxisGridProjections(
+    chart,
+    crosshairGridCount.value,
+    projectionValue,
+  );
+  if (projections.length === 0) {
     hideCrosshair();
     return;
   }
@@ -229,31 +446,46 @@ function updateCrosshairGraphic(x: number, y: number) {
   crosshairSelection.value = { dataIndex, timestamp };
 
   const mainRect = getGridRect(chart, 0);
-  const price = containsGrid(chart, 0, x, y) ? getMainGridPriceAtPixel(chart, xPixel, y) : undefined;
-  const graphic = buildCrosshairGraphics({
-    x: xPixel,
-    verticalRect,
-    horizontal:
-      mainRect && price !== undefined
-        ? {
-            y,
-            rect: mainRect,
-            label: formatPriceAxisPointerLabel({ value: price }),
-            labelSide: props.labelSide,
-          }
-        : undefined,
-  });
+  const mainProjection = projections.find((projection) => projection.gridIndex === 0);
+  const price =
+    mainProjection && containsGrid(chart, 0, x, y)
+      ? getMainGridPriceAtPixel(chart, mainProjection.x, y)
+      : undefined;
+  renderCrosshairOverlay(
+    projections,
+    mainRect && price !== undefined
+      ? {
+          y,
+          rect: mainRect,
+          label: formatPriceAxisPointerLabel({ value: price }),
+          labelSide: props.labelSide,
+        }
+      : undefined,
+  );
 
-  chart.setOption({ graphic } as EChartsOption);
-  chart.dispatchAction({
-    type: 'showTip',
-    seriesIndex: 0,
-    dataIndex,
-  });
+  if (lastTooltipDataIndex !== dataIndex) {
+    chart.dispatchAction({
+      type: 'showTip',
+      seriesIndex: 0,
+      dataIndex,
+    });
+    lastTooltipDataIndex = dataIndex;
+  }
 }
 
 function handleCrosshairMove(event: ElementEvent) {
-  updateCrosshairGraphic(Number(event.offsetX), Number(event.offsetY));
+  pendingCrosshairPoint = { x: Number(event.offsetX), y: Number(event.offsetY) };
+  if (crosshairFrameId !== undefined) {
+    return;
+  }
+  crosshairFrameId = requestAnimationFrame(() => {
+    crosshairFrameId = undefined;
+    const point = pendingCrosshairPoint;
+    pendingCrosshairPoint = undefined;
+    if (point) {
+      updateCrosshairGraphic(point.x, point.y);
+    }
+  });
 }
 
 function addLegend(name: string, position: number | undefined = undefined) {
@@ -309,7 +541,8 @@ function updateChart(initial = false) {
   // Avoid mutation of dataset.columns array
   const columns = props.dataset.columns.slice();
 
-  const colDate = columns.findIndex((el) => el === '__date_ts');
+  const timestampSourceColumn = chartMeta.value?.axis?.source_column ?? '__date_ts';
+  const rawDateColumn = columns.findIndex((el) => el === timestampSourceColumn);
   const colOpen = columns.findIndex((el) => el === 'open');
   const colHigh = columns.findIndex((el) => el === 'high');
   const colLow = columns.findIndex((el) => el === 'low');
@@ -338,6 +571,23 @@ function updateChart(initial = false) {
   let dataset = props.heikinAshi
     ? heikinAshiDataset(columns, props.dataset.data)
     : props.dataset.data.slice();
+  const axisMode = getChartAxisMode(chartMeta.value);
+  let xColumn = rawDateColumn;
+  let timestampColumn = rawDateColumn;
+  let tradingAxisDataset: TradingSessionAxisDataset | undefined;
+
+  if (axisMode === 'trading_session' && rawDateColumn >= 0) {
+    tradingAxisDataset = buildTradingSessionAxisDataset(
+      columns,
+      dataset,
+      rawDateColumn,
+      chartMeta.value?.axis?.display_column ?? TRADING_SESSION_DISPLAY_COLUMN,
+    );
+    columns.splice(0, columns.length, ...tradingAxisDataset.columns);
+    dataset = tradingAxisDataset.rows;
+    xColumn = tradingAxisDataset.displayColumn;
+    timestampColumn = tradingAxisDataset.timestampColumn;
+  }
 
   diffCols.value.forEach(([colFrom, colTo]) => {
     if (colFrom && colTo) {
@@ -348,14 +598,62 @@ function updateChart(initial = false) {
   // Add new rows to end to allow slight "scroll past"
   const scrollPastLength = 5;
   crosshairRows.value = dataset.slice();
-  crosshairDateColumn.value = colDate;
-  const lastColDate = dataset[dataset.length - 1]?.[colDate];
-  if (lastColDate) {
-    const newArray = Array(scrollPastLength);
-    newArray[colDate] = lastColDate + props.dataset.timeframe_ms * scrollPastLength;
+  crosshairDateColumn.value = timestampColumn;
+  crosshairXColumn.value = xColumn;
+  crosshairAxisMode.value = axisMode;
+  const lastXValue = dataset[dataset.length - 1]?.[xColumn];
+  if (lastXValue !== undefined) {
+    const newArray = Array(columns.length);
+    newArray[xColumn] =
+      axisMode === 'trading_session'
+        ? Number(lastXValue) + scrollPastLength
+        : Number(lastXValue) + props.dataset.timeframe_ms * scrollPastLength;
     dataset.push(newArray);
   }
-  const timeAxisDomain = getTimeAxisDomain(dataset, colDate);
+  const xAxisDomain =
+    axisMode === 'trading_session'
+      ? getAxisDomain(dataset, xColumn)
+      : getTimeAxisDomain(dataset, xColumn);
+
+  const formatTradingAxisLabel = (value: unknown): string => {
+    if (!tradingAxisDataset) {
+      return '';
+    }
+    const timestamp = getTimestampForDisplayValue(tradingAxisDataset, value);
+    return timestamp ? timestampms(timestamp) : '';
+  };
+
+  const buildXAxis = (gridIndex?: number) =>
+    axisMode === 'trading_session'
+      ? withLinkedValueAxisMapping(
+          {
+            type: 'value',
+            ...(gridIndex !== undefined ? { gridIndex } : {}),
+            axisLine: { onZero: false },
+            axisTick: { show: gridIndex === undefined },
+            axisLabel: { show: gridIndex === undefined },
+            axisPointer: createLinkedTimeAxisPointer(),
+            position: gridIndex === undefined ? 'top' : undefined,
+            splitLine: { show: false },
+            splitNumber: 20,
+          },
+          xAxisDomain,
+          formatTradingAxisLabel,
+        )
+      : withLinkedTimeAxisMapping(
+          {
+            type: 'time',
+            ...(gridIndex !== undefined ? { gridIndex } : {}),
+            axisLine: { onZero: false },
+            axisTick: { show: gridIndex === undefined },
+            axisLabel: { show: gridIndex === undefined },
+            axisPointer: createLinkedTimeAxisPointer(),
+            position: gridIndex === undefined ? 'top' : undefined,
+            splitLine: { show: false },
+            splitNumber: 20,
+          },
+          xAxisDomain,
+        );
 
   const options: EChartsOption = {
     dataset: {
@@ -380,6 +678,7 @@ function updateChart(initial = false) {
 
     series: [
       {
+        id: 'candles',
         name: nameCandles,
         type: 'candlestick',
         barWidth: '80%',
@@ -390,12 +689,13 @@ function updateChart(initial = false) {
           borderColor0: downBorderColor,
         },
         encode: {
-          x: colDate,
+          x: xColumn,
           // open, close, low, high
           y: [colOpen, colClose, colLow, colHigh],
         },
       },
       {
+        id: 'volume',
         name: nameVolume,
         type: 'bar',
         xAxisIndex: 1,
@@ -405,39 +705,12 @@ function updateChart(initial = false) {
         },
         large: true,
         encode: {
-          x: colDate,
+          x: xColumn,
           y: colVolume,
         },
       },
     ],
-    xAxis: [
-      withLinkedTimeAxisMapping(
-        {
-          type: 'time',
-          axisLine: { onZero: false },
-          axisTick: { show: true },
-          axisLabel: { show: true },
-          axisPointer: createLinkedTimeAxisPointer(),
-          position: 'top',
-          splitLine: { show: false },
-          splitNumber: 20,
-        },
-        timeAxisDomain,
-      ),
-      withLinkedTimeAxisMapping(
-        {
-          type: 'time',
-          gridIndex: 1,
-          axisLine: { onZero: false },
-          axisTick: { show: false },
-          axisLabel: { show: false },
-          axisPointer: createLinkedTimeAxisPointer(),
-          splitLine: { show: false },
-          splitNumber: 20,
-        },
-        timeAxisDomain,
-      ),
-    ],
+    xAxis: [buildXAxis(), buildXAxis(1)],
     yAxis: [
       {
         scale: true,
@@ -483,10 +756,12 @@ function updateChart(initial = false) {
     );
 
     if (areaSeries) {
+      areaSeries.id = 'mark-area';
       options.series.push(areaSeries);
     }
     const signalConfigs = [
       {
+        id: 'long-entry-signals',
         colData: colEntryData,
         name: nameEntry,
         symbol: 'triangle',
@@ -496,6 +771,7 @@ function updateChart(initial = false) {
         colTooltip: colEnterTag,
       },
       {
+        id: 'long-exit-signals',
         colData: colExitData,
         name: nameExit,
         symbol: 'diamond',
@@ -505,6 +781,7 @@ function updateChart(initial = false) {
         colTooltip: colExitTag,
       },
       {
+        id: 'short-entry-signals',
         colData: colShortEntryData,
         name: nameEntry,
         symbol: 'triangle',
@@ -515,6 +792,7 @@ function updateChart(initial = false) {
         colTooltip: colEnterTag,
       },
       {
+        id: 'short-exit-signals',
         colData: colShortExitData,
         name: nameExit,
         symbol: 'pin',
@@ -528,6 +806,7 @@ function updateChart(initial = false) {
     for (const signal of signalConfigs) {
       if (signal.colData >= 0) {
         options.series.push({
+          id: signal.id,
           name: signal.name,
           type: 'scatter',
           symbol: signal.symbol,
@@ -543,7 +822,7 @@ function updateChart(initial = false) {
               formatSignalTooltipValue(value, signal.tooltipPrefix, signal.colTooltip),
           },
           encode: {
-            x: colDate,
+            x: xColumn,
             y: signal.colData,
             tooltip:
               signal.colTooltip >= 0 ? [signal.colData, signal.colTooltip] : [signal.colData],
@@ -562,7 +841,7 @@ function updateChart(initial = false) {
       if (col > 0) {
         addLegend(key);
         if (Array.isArray(options.series)) {
-          options.series.push(generateCandleSeries(colDate, col, key, value, 0, chartMeta.value));
+          options.series.push(generateCandleSeries(xColumn, col, key, value, 0, chartMeta.value));
 
           if (value.fill_to) {
             // Assign
@@ -573,7 +852,7 @@ function updateChart(initial = false) {
               type: ChartType.line,
             };
             const areaSeries = generateAreaCandleSeries(
-              colDate,
+              xColumn,
               fillCol,
               key,
               fillValue,
@@ -629,21 +908,7 @@ function updateChart(initial = false) {
         });
       }
       if (Array.isArray(options.xAxis) && options.xAxis.length <= plotIndex) {
-        options.xAxis.push(
-          withLinkedTimeAxisMapping(
-            {
-              type: 'time',
-              gridIndex: currGridIdx,
-              axisLine: { onZero: false },
-              axisTick: { show: false },
-              axisLabel: { show: false },
-              axisPointer: createLinkedTimeAxisPointer(),
-              splitLine: { show: false },
-              splitNumber: 20,
-            },
-            timeAxisDomain,
-          ),
-        );
+        options.xAxis.push(buildXAxis(currGridIdx));
       }
       if (options.grid && Array.isArray(options.grid)) {
         options.grid.push({
@@ -660,7 +925,7 @@ function updateChart(initial = false) {
           addLegend(sk);
           if (options.series && Array.isArray(options.series)) {
             options.series.push(
-              generateCandleSeries(colDate, col, sk, sv, plotIndex, chartMeta.value),
+              generateCandleSeries(xColumn, col, sk, sv, plotIndex, chartMeta.value),
             );
             if (sv.fill_to) {
               // Assign
@@ -671,7 +936,7 @@ function updateChart(initial = false) {
                 type: ChartType.line,
               };
               const areaSeries = generateAreaCandleSeries(
-                colDate,
+                xColumn,
                 fillCol,
                 sk,
                 fillValue,
@@ -719,18 +984,22 @@ function updateChart(initial = false) {
     props.dataset,
     filteredTrades.value,
   );
+  tradesSeries.id = 'trades';
   if (Array.isArray(options.series)) {
     options.series.push(tradesSeries);
   }
   if (Array.isArray(options.xAxis)) {
     const xAxisIndex = createAxisIndexes(options.xAxis.length);
-    const initialZoomRange = initial
-      ? buildInitialTimeDataZoomRange(props.dataset.data, colDate, props.startCandleCount + 2)
-      : undefined;
+    const initialZoomRange =
+      xColumn >= 0
+        ? buildInitialDataZoomRange(dataset, xColumn, props.startCandleCount + 2)
+        : undefined;
     options.dataZoom = buildLinkedDataZoomOptions(xAxisIndex, initialZoomRange);
   }
   crosshairGridCount.value = Array.isArray(options.grid) ? options.grid.length : 0;
   crosshairSelection.value = undefined;
+  lastTooltipDataIndex = undefined;
+  hideCrosshairOverlay();
 
   // Merge this into original data
   Object.assign(chartOptions.value, options);
@@ -828,6 +1097,9 @@ function initializeChartOptions() {
 }
 
 function updateSliderPosition() {
+  if (getChartAxisMode(chartMeta.value) === 'trading_session') {
+    return;
+  }
   if (!props.sliderPosition) return;
 
   const start = props.sliderPosition.startValue - props.dataset.timeframe_ms * 40;
@@ -866,6 +1138,18 @@ onMounted(() => {
   initializeChartOptions();
 });
 
+onBeforeUnmount(() => {
+  hideCrosshair();
+  for (const line of crosshairVerticalLines.values()) {
+    line.remove();
+  }
+  crosshairVerticalLines.clear();
+  crosshairHorizontalLine?.remove();
+  crosshairHorizontalLine = undefined;
+  crosshairPriceLabel?.remove();
+  crosshairPriceLabel = undefined;
+});
+
 watch([() => props.useUTC, () => props.theme, () => plotConfigKey.value], () =>
   initializeChartOptions(),
 );
@@ -897,6 +1181,7 @@ watch(
       @zr:mousemove="handleCrosshairMove"
       @zr:globalout="hideCrosshair"
     />
+    <div ref="crosshairOverlay" class="crosshair-overlay" />
   </div>
 </template>
 
@@ -911,5 +1196,11 @@ watch(
   /* TODO: height calculation is not working correctly - uses min-height for now */
   /* height: 600px; */
   height: 100%;
+}
+
+.crosshair-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 </style>

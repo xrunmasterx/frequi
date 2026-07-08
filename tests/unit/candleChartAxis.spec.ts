@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   createLinkedTimeAxisPointer,
   createMainPriceAxisPointer,
+  getAxisDomain,
   getTimeAxisDomain,
+  withLinkedValueAxisMapping,
   withLinkedTimeAxisMapping,
 } from '@/utils/charts/candleChartAxis';
 import * as echarts from 'echarts';
@@ -81,6 +83,70 @@ describe('candle chart axis utilities', () => {
       containShape: false,
       min: domain.min,
       max: domain.max,
+    });
+  });
+
+  it('derives a numeric display-axis domain from sequential candle indexes', () => {
+    expect(
+      getAxisDomain(
+        [
+          [1_782_000_000_000, 0],
+          [1_782_003_600_000, 1],
+          [1_782_090_000_000, 2],
+        ],
+        1,
+      ),
+    ).toEqual({ min: 0, max: 2 });
+  });
+
+  it('builds linked value axes for compressed trading-session coordinates', () => {
+    const formatter = (value: unknown) => `label:${value}`;
+
+    expect(
+      withLinkedValueAxisMapping({ type: 'value', gridIndex: 1 }, { min: 0, max: 2 }, formatter),
+    ).toEqual({
+      type: 'value',
+      gridIndex: 1,
+      boundaryGap: [0, 0],
+      containShape: false,
+      min: 0,
+      max: 2,
+      minInterval: 1,
+      maxInterval: 1,
+      axisLabel: {
+        formatter,
+        hideOverlap: true,
+      },
+    });
+  });
+
+  it('preserves existing axisLabel options when adding a linked value-axis formatter', () => {
+    const formatter = (value: unknown) => `label:${value}`;
+
+    expect(
+      withLinkedValueAxisMapping(
+        {
+          type: 'value',
+          axisLabel: {
+            show: false,
+          },
+        },
+        { min: 0, max: 2 },
+        formatter,
+      ),
+    ).toEqual({
+      type: 'value',
+      boundaryGap: [0, 0],
+      containShape: false,
+      min: 0,
+      max: 2,
+      minInterval: 1,
+      maxInterval: 1,
+      axisLabel: {
+        show: false,
+        formatter,
+        hideOverlap: true,
+      },
     });
   });
 
