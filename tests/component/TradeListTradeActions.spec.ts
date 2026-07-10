@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { defineComponent, markRaw } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,9 @@ import type { Trade } from '@/types';
 const forceEntryDialog = vi.fn();
 const forceExitDialog = vi.fn();
 const confirm = vi.fn();
+const forceSellMulti = vi.fn();
+const deleteTradeMulti = vi.fn();
+const cancelOpenOrderMulti = vi.fn();
 
 vi.mock('@/composables/useForceTrade', () => ({
   useForceTrade: () => ({ forceEntryDialog, forceExitDialog }),
@@ -51,12 +54,13 @@ const trade = {
 describe('TradeList row force actions', () => {
   const botAFeatures = markRaw({ forceEnterShort: false });
   const botBFeatures = markRaw({ forceEnterShort: true });
+  let botStore: ReturnType<typeof useBotStore>;
 
   beforeEach(() => {
     const pinia = createPinia();
     setActivePinia(pinia);
     vi.clearAllMocks();
-    const botStore = useBotStore();
+    botStore = useBotStore();
     botStore.selectedBot = 'bot-a';
     botStore.botStores = {
       'bot-a': {
@@ -84,6 +88,12 @@ describe('TradeList row force actions', () => {
         stakeCurrencyDecimals: 6,
       } as unknown as BotSubStore,
     };
+    botStore.forceSellMulti = forceSellMulti;
+    botStore.deleteTradeMulti = deleteTradeMulti;
+    botStore.cancelOpenOrderMulti = cancelOpenOrderMulti;
+    forceSellMulti.mockResolvedValue(undefined);
+    deleteTradeMulti.mockResolvedValue(undefined);
+    cancelOpenOrderMulti.mockResolvedValue(undefined);
   });
 
   function mountTradeList() {
@@ -130,10 +140,21 @@ describe('TradeList row force actions', () => {
     expect(actions.props('botFeatures')).toBe(botBFeatures);
   });
 
-  it.each(['full-exit', 'delete-trade', 'cancel-open-order'])(
-    'shows the row bot target when confirming %s',
-    async (hook) => {
-      confirm.mockResolvedValue(false);
+  it.each([
+    ['full-exit', forceSellMulti],
+    ['delete-trade', deleteTradeMulti],
+    ['cancel-open-order', cancelOpenOrderMulti],
+  ])(
+    'keeps the row bot target while confirming %s',
+    async (hook, executeAction) => {
+      let resolveConfirm!: (value: boolean) => void;
+      confirm.mockImplementation(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveConfirm = resolve;
+          }),
+      );
+      botStore.selectedBot = 'bot-b';
       const wrapper = mountTradeList();
 
       await wrapper.get(`[data-test="${hook}"]`).trigger('click');
@@ -144,6 +165,18 @@ describe('TradeList row force actions', () => {
       expect(targetContext).toContain('futures');
       expect(targetContext).toContain('LIVE');
       expect(targetContext).not.toContain('Alpha');
+
+      botStore.selectedBot = 'bot-a';
+      resolveConfirm(true);
+      await flushPromises();
+
+      expect(executeAction).toHaveBeenCalledWith({
+        botId: 'bot-b',
+        tradeid: String(trade.trade_id),
+      });
+      expect(executeAction).not.toHaveBeenCalledWith(
+        expect.objectContaining({ botId: 'bot-a' }),
+      );
     },
   );
 });
