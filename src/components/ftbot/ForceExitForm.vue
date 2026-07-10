@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MultiForceExitPayload, Trade } from '@/types';
+import { formatTradeActionTarget } from '@/utils/tradeActionTarget';
 import { refDebounced } from '@vueuse/core';
 
 export interface ForceExitFormProps {
@@ -17,6 +18,9 @@ const botStore = useBotStore();
 const { t } = useAppI18n();
 const targetBot = computed(() => botStore.botStores[props.botId]);
 const targetUnavailable = computed(() => !targetBot.value);
+const targetContext = computed(() =>
+  targetBot.value ? formatTradeActionTarget(targetBot.value, t) : undefined,
+);
 
 const form = ref<HTMLFormElement>();
 const amount = ref<number | undefined>(undefined);
@@ -81,6 +85,13 @@ resetForm();
     :description="t('trade.forceExitModalDescription')"
   >
     <template #body>
+      <div
+        v-if="targetContext"
+        data-test="trade-action-target"
+        class="mb-3 font-medium"
+      >
+        {{ targetContext }}
+      </div>
       <UAlert
         v-if="targetUnavailable"
         data-test="target-unavailable"

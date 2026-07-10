@@ -329,6 +329,11 @@ export const zhCN = {
     reloadConfigMessage: '重新加载配置（包括策略）？',
     forceExitAll: '强制退出全部',
     forceExitAllMessage: '确认强制退出所有交易？',
+    actionTargetDryRun:
+      '目标机器人：{botName}（{botId}）· {exchange} · {tradingMode} · 模拟运行',
+    actionTargetLive: '目标机器人：{botName}（{botId}）· {exchange} · {tradingMode} · 实盘',
+    actionTargetUnknown:
+      '目标机器人：{botName}（{botId}）· {exchange} · {tradingMode} · 运行环境未知',
     configReloaded: '配置已成功重新加载。',
     table: {
       id: 'ID',

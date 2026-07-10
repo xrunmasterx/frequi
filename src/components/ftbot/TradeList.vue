@@ -3,6 +3,7 @@ import { getPaginationRowModel } from '@tanstack/vue-table';
 import type { TableColumn, TableRow } from '@nuxt/ui';
 import type { MultiDeletePayload, MultiForceExitPayload, Trade } from '@/types';
 import type { BotSubStore } from '@/stores/ftbotwrapper';
+import { formatTradeActionTarget } from '@/utils/tradeActionTarget';
 
 import { useRouter } from 'vue-router';
 
@@ -92,6 +93,7 @@ async function forceExitHandler(
   item: Trade,
   ordertype: 'limit' | 'market' | undefined = undefined,
 ) {
+  const targetBot = botForTrade(item);
   const message = ordertype
     ? formatLocaleText(t('trade.confirmExitTradeUsingOrder'), {
         tradeId: item.trade_id,
@@ -108,12 +110,13 @@ async function forceExitHandler(
       title: t('trade.forceExitTrade'),
       description: t('trade.actionCannotBeUndone'),
       message,
+      targetContext: formatTradeActionTarget(targetBot, t),
       confirmText: t('common.confirm'),
     }))
   ) {
     const payload: MultiForceExitPayload = {
       tradeid: String(item.trade_id),
-      botId: item.botId,
+      botId: targetBot.botId,
     };
     if (ordertype) {
       payload.ordertype = ordertype;
@@ -126,6 +129,7 @@ async function forceExitHandler(
 }
 
 async function removeTradeHandler(item: Trade) {
+  const targetBot = botForTrade(item);
   if (
     await confirm({
       title: t('trade.deleteTrade'),
@@ -134,12 +138,13 @@ async function removeTradeHandler(item: Trade) {
         tradeId: item.trade_id,
         pair: item.pair,
       }),
+      targetContext: formatTradeActionTarget(targetBot, t),
       confirmText: t('common.confirm'),
     })
   ) {
     const payload: MultiDeletePayload = {
       tradeid: String(item.trade_id),
-      botId: item.botId,
+      botId: targetBot.botId,
     };
     botStore.deleteTradeMulti(payload).catch((error) => console.log(error.response));
   }
@@ -159,6 +164,7 @@ function botForTrade(item: Trade): BotSubStore {
 }
 
 async function cancelOpenOrderHandler(item: Trade) {
+  const targetBot = botForTrade(item);
   if (
     await confirm({
       title: t('trade.cancelOpenOrder'),
@@ -167,12 +173,13 @@ async function cancelOpenOrderHandler(item: Trade) {
         tradeId: item.trade_id,
         pair: item.pair,
       }),
+      targetContext: formatTradeActionTarget(targetBot, t),
       confirmText: t('common.confirm'),
     })
   ) {
     const payload: MultiDeletePayload = {
       tradeid: String(item.trade_id),
-      botId: item.botId,
+      botId: targetBot.botId,
     };
     botStore.cancelOpenOrderMulti(payload).catch((error) => console.log(error.response));
   }

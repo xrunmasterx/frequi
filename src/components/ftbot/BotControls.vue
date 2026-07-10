@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ForceExitPayload } from '@/types';
+import { formatTradeActionTarget } from '@/utils/tradeActionTarget';
 
 const botStore = useBotStore();
 const { confirm } = useConfirmBox();
@@ -12,49 +12,53 @@ const isRunning = computed((): boolean => {
 });
 
 async function handleStopBot() {
+  const targetBot = botStore.activeBot;
   const result = await confirm({
     title: t('trade.stopBot'),
     message: t('trade.stopBotMessage'),
+    targetContext: formatTradeActionTarget(targetBot, t),
   });
   if (result) {
-    botStore.activeBot.stopBot();
+    targetBot.stopBot();
   }
 }
 
 async function handleStopBuy() {
+  const targetBot = botStore.activeBot;
   if (
     await confirm({
       title: t('trade.pauseStopEntering'),
       message: t('trade.pauseStopEnteringMessage'),
+      targetContext: formatTradeActionTarget(targetBot, t),
     })
   ) {
-    botStore.activeBot.stopBuy();
+    targetBot.stopBuy();
   }
 }
 
 async function handleReloadConfig() {
+  const targetBot = botStore.activeBot;
   if (
     await confirm({
       title: t('trade.reloadConfig'),
       message: t('trade.reloadConfigMessage'),
+      targetContext: formatTradeActionTarget(targetBot, t),
     })
   ) {
-    botStore.activeBot.reloadConfig();
+    targetBot.reloadConfig();
   }
 }
 
 async function handleForceExit() {
+  const targetBot = botStore.activeBot;
   if (
     await confirm({
       title: t('trade.forceExitAll'),
       message: t('trade.forceExitAllMessage'),
+      targetContext: formatTradeActionTarget(targetBot, t),
     })
   ) {
-    const payload: ForceExitPayload = {
-      tradeid: 'all',
-      // TODO: support ordertype (?)
-    };
-    botStore.activeBot.forceexit(payload);
+    await botStore.forceSellMulti({ botId: targetBot.botId, tradeid: 'all' });
   }
 }
 
@@ -78,6 +82,7 @@ async function handleForceEntry() {
       @click="botStore.activeBot.startBot()"
     />
     <UButton
+      data-test="stop-bot"
       size="xl"
       color="neutral"
       :disabled="!botStore.activeBot.isTrading || !isRunning"
@@ -86,6 +91,7 @@ async function handleForceEntry() {
       @click="handleStopBot()"
     />
     <UButton
+      data-test="stop-entering"
       size="xl"
       color="neutral"
       :disabled="!botStore.activeBot.isTrading || !isRunning"
@@ -94,6 +100,7 @@ async function handleForceEntry() {
       @click="handleStopBuy()"
     />
     <UButton
+      data-test="reload-config"
       size="xl"
       color="neutral"
       :disabled="!botStore.activeBot.isTrading"
@@ -102,6 +109,7 @@ async function handleForceEntry() {
       @click="handleReloadConfig()"
     />
     <UButton
+      data-test="force-exit-all"
       color="neutral"
       size="xl"
       :disabled="!botStore.activeBot.isTrading"
@@ -110,6 +118,7 @@ async function handleForceEntry() {
       @click="handleForceExit()"
     />
     <UButton
+      data-test="force-entry"
       v-if="botStore.activeBot.botState && botStore.activeBot.botState.force_entry_enable"
       size="xl"
       color="neutral"

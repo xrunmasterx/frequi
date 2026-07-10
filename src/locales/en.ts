@@ -316,6 +316,11 @@ export const en = {
     reloadConfigMessage: 'Reload configuration (including strategy)?',
     forceExitAll: 'ForceExit all',
     forceExitAllMessage: 'Really forceexit ALL trades?',
+    actionTargetDryRun:
+      'Target bot: {botName} ({botId}) · {exchange} · {tradingMode} · DRY-RUN',
+    actionTargetLive: 'Target bot: {botName} ({botId}) · {exchange} · {tradingMode} · LIVE',
+    actionTargetUnknown:
+      'Target bot: {botName} ({botId}) · {exchange} · {tradingMode} · UNKNOWN ENVIRONMENT',
     configReloaded: 'Config reloaded successfully.',
     table: {
       id: 'ID',

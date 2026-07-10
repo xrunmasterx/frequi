@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MultiForceEnterPayload } from '@/types';
+import { formatTradeActionTarget } from '@/utils/tradeActionTarget';
 import { OrderSides } from '@/types';
 
 export interface ForceEntryFormProps {
@@ -21,6 +22,9 @@ const botStore = useBotStore();
 const { t } = useAppI18n();
 const targetBot = computed(() => botStore.botStores[props.botId]);
 const targetUnavailable = computed(() => !targetBot.value);
+const targetContext = computed(() =>
+  targetBot.value ? formatTradeActionTarget(targetBot.value, t) : undefined,
+);
 
 const form = ref<HTMLFormElement>();
 const selectedPair = ref('');
@@ -107,6 +111,13 @@ resetForm();
     "
   >
     <template #body>
+      <div
+        v-if="targetContext"
+        data-test="trade-action-target"
+        class="mb-3 font-medium"
+      >
+        {{ targetContext }}
+      </div>
       <UAlert
         v-if="targetUnavailable"
         data-test="target-unavailable"
