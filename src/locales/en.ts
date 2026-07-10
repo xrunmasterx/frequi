@@ -369,6 +369,8 @@ export const en = {
     forceExitOrderCreated: 'Exit order for {tradeId} created',
     forceExitOrderError: 'Failed to create exit order for {tradeId}',
     forceEntryOrderCreated: 'Order for {pair} created.',
+    targetBotUnavailable:
+      'The selected target bot is no longer available. The action was blocked.',
     forceEntryOrderError: 'Failed to create entry order.',
     forceEntryOrderErrorWithMessage: 'Failed to create entry order: {message}',
     pairEmpty: 'Pair is empty',

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ForceEnterPayload } from '@/types';
+import type { MultiForceEnterPayload } from '@/types';
 import { OrderSides } from '@/types';
 
 export interface ForceEntryFormProps {
+  botId: string;
   pair?: string;
   positionIncrease?: boolean;
 }
@@ -18,6 +19,8 @@ const emit = defineEmits<{
 
 const botStore = useBotStore();
 const { t } = useAppI18n();
+const targetBot = computed(() => botStore.botStores[props.botId]);
+const targetUnavailable = computed(() => !targetBot.value);
 
 const form = ref<HTMLFormElement>();
 const selectedPair = ref('');
@@ -46,12 +49,12 @@ function checkFormValidity() {
 
 async function handleEntry() {
   // Exit when the form isn't valid
-  if (!checkFormValidity()) {
+  if (!checkFormValidity() || !targetBot.value) {
     return;
   }
 
   // call forceentry
-  const payload: ForceEnterPayload = { pair: selectedPair.value };
+  const payload: MultiForceEnterPayload = { botId: props.botId, pair: selectedPair.value };
   if (price.value) {
     payload.price = Number(price.value);
   }
@@ -61,17 +64,17 @@ async function handleEntry() {
   if (stakeAmount.value) {
     payload.stakeamount = stakeAmount.value;
   }
-  if (botStore.activeBot.botFeatures.forceEnterShort && botStore.activeBot.shortAllowed) {
+  if (targetBot.value.botFeatures.forceEnterShort && targetBot.value.shortAllowed) {
     payload.side = orderSide.value;
   }
-  if (botStore.activeBot.botFeatures.forceEntryTag && enterTag.value) {
+  if (targetBot.value.botFeatures.forceEntryTag && enterTag.value) {
     payload.entry_tag = enterTag.value;
   }
 
   if (leverage.value) {
     payload.leverage = leverage.value;
   }
-  botStore.activeBot.forceentry(payload);
+  await botStore.forceEntryMulti(payload);
   emit('close', true);
 }
 
@@ -80,10 +83,10 @@ function resetForm() {
   price.value = undefined;
   stakeAmount.value = undefined;
   ordertype.value =
-    botStore.activeBot.botState?.order_types?.forcebuy ||
-    botStore.activeBot.botState?.order_types?.force_entry ||
-    botStore.activeBot.botState?.order_types?.buy ||
-    botStore.activeBot.botState?.order_types?.entry ||
+    targetBot.value?.botState?.order_types?.forcebuy ||
+    targetBot.value?.botState?.order_types?.force_entry ||
+    targetBot.value?.botState?.order_types?.buy ||
+    targetBot.value?.botState?.order_types?.entry ||
     'limit';
 }
 
@@ -104,9 +107,15 @@ resetForm();
     "
   >
     <template #body>
+      <UAlert
+        v-if="targetUnavailable"
+        data-test="target-unavailable"
+        color="error"
+        :title="t('trade.targetBotUnavailable')"
+      />
       <form ref="form" class="space-y-4" @submit.prevent="handleEntry">
         <UFormField
-          v-if="botStore.activeBot.botFeatures.forceEnterShort && botStore.activeBot.shortAllowed"
+          v-if="targetBot?.botFeatures.forceEnterShort && targetBot.shortAllowed"
           :label="t('trade.orderDirection')"
         >
           <USegmentedControl
@@ -148,7 +157,7 @@ resetForm();
         <UFormField
           :label="
             formatLocaleText(t('trade.stakeAmountOptional'), {
-              currency: botStore.activeBot.stakeCurrency,
+              currency: targetBot?.stakeCurrency ?? '',
             })
           "
         >
@@ -157,7 +166,7 @@ resetForm();
             show-buttons
             :min="0"
             :stepSnapping="false"
-            :step="['USDC', 'USDT'].includes(botStore.activeBot.stakeCurrency) ? 10 : 1"
+            :step="['USDC', 'USDT'].includes(targetBot?.stakeCurrency ?? '') ? 10 : 1"
             class="w-full"
             :format-options="{
               maximumFractionDigits: 5,
@@ -166,7 +175,7 @@ resetForm();
         </UFormField>
 
         <UFormField
-          v-if="botStore.activeBot.botFeatures.forceEnterShort && botStore.activeBot.shortAllowed"
+          v-if="targetBot?.botFeatures.forceEnterShort && targetBot.shortAllowed"
           :label="t('trade.leverageOptional')"
         >
           <UInputNumber
@@ -193,7 +202,7 @@ resetForm();
         </UFormField>
 
         <UFormField
-          v-if="botStore.activeBot.botFeatures.forceEntryTag"
+          v-if="targetBot?.botFeatures.forceEntryTag"
           :label="t('trade.customEntryTagOptional')"
         >
           <UInput id="enterTag-input" v-model="enterTag" class="w-full" />
@@ -205,7 +214,14 @@ resetForm();
         <UButton color="neutral" @click="$emit('close', false)" icon="mdi:close">
           {{ t('common.cancel') }}
         </UButton>
-        <UButton @click="handleEntry" icon="mdi:check"> {{ t('trade.enterPosition') }} </UButton>
+        <UButton
+          data-test="submit-force-entry"
+          :disabled="targetUnavailable"
+          @click="handleEntry"
+          icon="mdi:check"
+        >
+          {{ t('trade.enterPosition') }}
+        </UButton>
       </div>
     </template>
   </UModal>

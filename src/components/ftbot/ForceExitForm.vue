@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ForceExitPayload, Trade } from '@/types';
+import type { MultiForceExitPayload, Trade } from '@/types';
 import { refDebounced } from '@vueuse/core';
 
 export interface ForceExitFormProps {
+  botId: string;
   trade: Trade;
   stakeCurrencyDecimals: number;
 }
@@ -14,6 +15,8 @@ const emit = defineEmits<{
 
 const botStore = useBotStore();
 const { t } = useAppI18n();
+const targetBot = computed(() => botStore.botStores[props.botId]);
+const targetUnavailable = computed(() => !targetBot.value);
 
 const form = ref<HTMLFormElement>();
 const amount = ref<number | undefined>(undefined);
@@ -28,11 +31,14 @@ const checkFormValidity = () => {
 
 async function handleExit() {
   // Exit when the form isn't valid
-  if (!checkFormValidity()) {
+  if (!checkFormValidity() || !targetBot.value) {
     return;
   }
   // call forceentry
-  const payload: ForceExitPayload = { tradeid: String(props.trade.trade_id) };
+  const payload: MultiForceExitPayload = {
+    botId: props.botId,
+    tradeid: String(props.trade.trade_id),
+  };
 
   if (ordertype.value) {
     payload.ordertype = ordertype.value;
@@ -40,19 +46,18 @@ async function handleExit() {
   if (amount.value) {
     payload.amount = amount.value;
   }
-  if (price.value && botStore.activeBot.botFeatures.forceExitWithPrice) {
+  if (price.value && targetBot.value.botFeatures.forceExitWithPrice) {
     payload.price = price.value;
   }
-  await nextTick();
-  botStore.activeBot.forceexit(payload);
+  await botStore.forceSellMulti(payload);
   emit('close', true);
 }
 
 function resetForm() {
   amount.value = props.trade.amount;
   ordertype.value =
-    botStore.activeBot.botState?.order_types?.force_exit ||
-    botStore.activeBot.botState?.order_types?.exit ||
+    targetBot.value?.botState?.order_types?.force_exit ||
+    targetBot.value?.botState?.order_types?.exit ||
     'limit';
 }
 
@@ -76,6 +81,12 @@ resetForm();
     :description="t('trade.forceExitModalDescription')"
   >
     <template #body>
+      <UAlert
+        v-if="targetUnavailable"
+        data-test="target-unavailable"
+        color="error"
+        :title="t('trade.targetBotUnavailable')"
+      />
       <form ref="form" class="space-y-4" @submit.prevent="handleExit">
         <div class="mb-4">
           <p class="mb-2">
@@ -113,7 +124,7 @@ resetForm();
         </UFormField>
         <UFormField
           :label="t('trade.priceOptional')"
-          v-if="botStore.activeBot.botFeatures.forceExitWithPrice"
+          v-if="targetBot?.botFeatures.forceExitWithPrice"
           :description="t('trade.priceOnlyLimit')"
         >
           <UInputNumber
@@ -145,7 +156,14 @@ resetForm();
       <UButton class="ms-auto" icon="mdi:close" color="neutral" @click="$emit('close', false)">{{
         t('common.cancel')
       }}</UButton>
-      <UButton icon="mdi:exit-to-app" @click="handleExit">{{ t('trade.exitPosition') }}</UButton>
+      <UButton
+        data-test="submit-force-exit"
+        :disabled="targetUnavailable"
+        icon="mdi:exit-to-app"
+        @click="handleExit"
+      >
+        {{ t('trade.exitPosition') }}
+      </UButton>
     </template>
   </UModal>
 </template>

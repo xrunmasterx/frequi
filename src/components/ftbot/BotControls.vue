@@ -59,8 +59,10 @@ async function handleForceExit() {
 }
 
 async function handleForceEntry() {
+  const targetBot = botStore.activeBot;
   await forceEntryDialog({
-    pair: botStore.activeBot.selectedPair,
+    botId: targetBot.botId,
+    pair: targetBot.selectedPair,
   });
 }
 </script>

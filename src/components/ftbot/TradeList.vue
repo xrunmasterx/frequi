@@ -2,6 +2,7 @@
 import { getPaginationRowModel } from '@tanstack/vue-table';
 import type { TableColumn, TableRow } from '@nuxt/ui';
 import type { MultiDeletePayload, MultiForceExitPayload, Trade } from '@/types';
+import type { BotSubStore } from '@/stores/ftbotwrapper';
 
 import { useRouter } from 'vue-router';
 
@@ -145,10 +146,16 @@ async function removeTradeHandler(item: Trade) {
 }
 
 function forceExitPartialHandler(item: Trade) {
+  const targetBot = botForTrade(item);
   forceExitDialog({
+    botId: item.botId,
     trade: item,
-    stakeCurrencyDecimals: botStore.activeBot.botState.stake_currency_decimals ?? 3,
+    stakeCurrencyDecimals: targetBot.stakeCurrencyDecimals,
   });
+}
+
+function botForTrade(item: Trade): BotSubStore {
+  return botStore.getBotOrThrow(item.botId);
 }
 
 async function cancelOpenOrderHandler(item: Trade) {
@@ -177,6 +184,7 @@ function reloadTradeHandler(item: Trade) {
 
 function handleForceEntry(item: Trade) {
   forceEntryDialog({
+    botId: item.botId,
     pair: item.pair,
     positionIncrease: true,
   });
@@ -250,9 +258,9 @@ const rowSelection = computed({
       <template #actions-cell="{ row }">
         <TradeActionsPopover
           :id="row.original.trade_id ?? row.index"
-          :enable-force-entry="botStore.activeBot.botState.force_entry_enable"
+          :enable-force-entry="botForTrade(row.original).botState.force_entry_enable"
           :trade="row.original"
-          :bot-features="botStore.activeBot.botFeatures"
+          :bot-features="botForTrade(row.original).botFeatures"
           @delete-trade="removeTradeHandler(row.original)"
           @force-exit="forceExitHandler"
           @force-exit-partial="forceExitPartialHandler"

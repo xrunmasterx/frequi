@@ -289,6 +289,7 @@ export const zhCN = {
     forceExitOrderCreated: '已为 {tradeId} 创建退出订单',
     forceExitOrderError: '为 {tradeId} 创建退出订单失败',
     forceEntryOrderCreated: '已为 {pair} 创建订单。',
+    targetBotUnavailable: '目标机器人已不可用，本次操作已被阻止。',
     forceEntryOrderError: '创建入场订单失败。',
     forceEntryOrderErrorWithMessage: '创建入场订单失败：{message}',
     pairEmpty: '交易对为空',
