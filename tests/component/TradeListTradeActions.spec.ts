@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { defineComponent, markRaw, toRaw } from 'vue';
+import { defineComponent, markRaw, nextTick } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import TradeList from '@/components/ftbot/TradeList.vue';
@@ -71,6 +71,10 @@ const trade = {
 describe('TradeList row force actions', () => {
   const botAFeatures = markRaw({ forceEnterShort: false });
   const botBFeatures = markRaw({ forceEnterShort: true });
+  const logoutA = vi.fn();
+  const logoutB = vi.fn();
+  const disposeA = vi.fn();
+  const disposeB = vi.fn();
   let botStore: ReturnType<typeof useBotStore>;
   let deleteTradeDispatch: ReturnType<typeof useBotStore>['deleteTradeMulti'];
   let cancelOpenOrderDispatch: ReturnType<typeof useBotStore>['cancelOpenOrderMulti'];
@@ -82,6 +86,10 @@ describe('TradeList row force actions', () => {
     vi.clearAllMocks();
     botStore = useBotStore();
     botStore.selectedBot = 'bot-a';
+    botStore.availableBots = {
+      'bot-a': { botId: 'bot-a', botName: 'Alpha', botUrl: 'http://bot-a', sortId: 0 },
+      'bot-b': { botId: 'bot-b', botName: 'Beta', botUrl: 'http://bot-b', sortId: 1 },
+    };
     botStore.botStores = {
       'bot-a': {
         botId: 'bot-a',
@@ -97,6 +105,8 @@ describe('TradeList row force actions', () => {
         deleteTrade: deleteTradeA,
         cancelOpenOrder: cancelOpenOrderA,
         reloadTrade: reloadTradeA,
+        logout: logoutA,
+        $dispose: disposeA,
       } as unknown as BotSubStore,
       'bot-b': {
         botId: 'bot-b',
@@ -112,6 +122,8 @@ describe('TradeList row force actions', () => {
         deleteTrade: deleteTradeB,
         cancelOpenOrder: cancelOpenOrderB,
         reloadTrade: reloadTradeB,
+        logout: logoutB,
+        $dispose: disposeB,
       } as unknown as BotSubStore,
     };
     deleteTradeDispatch = botStore.deleteTradeMulti;
@@ -229,7 +241,9 @@ describe('TradeList row force actions', () => {
       const wrapper = mountTradeList();
 
       await wrapper.get(`[data-test="${hook}"]`).trigger('click');
-      delete toRaw(botStore.botStores)['bot-b'];
+      botStore.removeBot('bot-b');
+      await nextTick();
+      expect(wrapper.findComponent(TradeActionsPopoverStub).exists()).toBe(false);
       resolveConfirm(true);
       await flushPromises();
 
@@ -246,7 +260,7 @@ describe('TradeList row force actions', () => {
 
   it('shows one unavailable-target error when bot B disappears before reload dispatch', async () => {
     botStore.reloadTradeMulti = vi.fn(async (payload) => {
-      delete toRaw(botStore.botStores)['bot-b'];
+      botStore.removeBot('bot-b');
       return reloadTradeDispatch(payload);
     });
     const wrapper = mountTradeList();

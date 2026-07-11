@@ -102,7 +102,7 @@ async function forceExitHandler(
   item: Trade,
   ordertype: 'limit' | 'market' | undefined = undefined,
 ) {
-  const targetBot = botForTrade(item);
+  const targetBot = getBotForTradeOrThrow(item);
   const message = ordertype
     ? formatLocaleText(t('trade.confirmExitTradeUsingOrder'), {
         tradeId: item.trade_id,
@@ -138,7 +138,7 @@ async function forceExitHandler(
 }
 
 async function removeTradeHandler(item: Trade) {
-  const targetBot = botForTrade(item);
+  const targetBot = getBotForTradeOrThrow(item);
   if (
     await confirm({
       title: t('trade.deleteTrade'),
@@ -160,7 +160,7 @@ async function removeTradeHandler(item: Trade) {
 }
 
 function forceExitPartialHandler(item: Trade) {
-  const targetBot = botForTrade(item);
+  const targetBot = getBotForTradeOrThrow(item);
   forceExitDialog({
     botId: item.botId,
     trade: item,
@@ -168,12 +168,12 @@ function forceExitPartialHandler(item: Trade) {
   });
 }
 
-function botForTrade(item: Trade): BotSubStore {
+function getBotForTradeOrThrow(item: Trade): BotSubStore {
   return botStore.getBotOrThrow(item.botId);
 }
 
 async function cancelOpenOrderHandler(item: Trade) {
-  const targetBot = botForTrade(item);
+  const targetBot = getBotForTradeOrThrow(item);
   if (
     await confirm({
       title: t('trade.cancelOpenOrder'),
@@ -275,10 +275,11 @@ const rowSelection = computed({
       </template>
       <template #actions-cell="{ row }">
         <TradeActionsPopover
+          v-if="botStore.botStores[row.original.botId]"
           :id="row.original.trade_id ?? row.index"
-          :enable-force-entry="botForTrade(row.original).botState.force_entry_enable"
+          :enable-force-entry="botStore.botStores[row.original.botId].botState.force_entry_enable"
           :trade="row.original"
-          :bot-features="botForTrade(row.original).botFeatures"
+          :bot-features="botStore.botStores[row.original.botId].botFeatures"
           @delete-trade="removeTradeHandler(row.original)"
           @force-exit="forceExitHandler"
           @force-exit-partial="forceExitPartialHandler"
