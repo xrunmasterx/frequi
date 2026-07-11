@@ -27,6 +27,10 @@ import axios from 'axios';
 
 export type BotSubStore = ReturnType<typeof createBotSubStore>;
 
+export function isUnknownBotTarget(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith('Unknown bot target:');
+}
+
 export interface SubStores {
   [key: string]: BotSubStore;
 }
@@ -493,21 +497,15 @@ export const useBotStore = defineStore('ftbot-wrapper', (): BotStoreSetup => {
   }
 
   async function deleteTradeMulti(deletePayload: MultiDeletePayload) {
-    const bot = botStores.value[deletePayload.botId];
-    if (!bot) return;
-    return bot.deleteTrade(deletePayload.tradeid);
+    return getBotOrThrow(deletePayload.botId).deleteTrade(deletePayload.tradeid);
   }
 
   async function cancelOpenOrderMulti(deletePayload: MultiCancelOpenOrderPayload) {
-    const bot = botStores.value[deletePayload.botId];
-    if (!bot) return;
-    return bot.cancelOpenOrder(deletePayload.tradeid);
+    return getBotOrThrow(deletePayload.botId).cancelOpenOrder(deletePayload.tradeid);
   }
 
   async function reloadTradeMulti(deletePayload: MultiReloadTradePayload) {
-    const bot = botStores.value[deletePayload.botId];
-    if (!bot) return;
-    return bot.reloadTrade(deletePayload.tradeid);
+    return getBotOrThrow(deletePayload.botId).reloadTrade(deletePayload.tradeid);
   }
 
   async function allGetTimeSummary(period: TimeSummaryOptions, payload?: TimeSummaryPayload) {

@@ -9,6 +9,12 @@ describe('ftbot wrapper force-action routing', () => {
   const forceEntryB = vi.fn();
   const forceExitA = vi.fn();
   const forceExitB = vi.fn();
+  const deleteTradeA = vi.fn();
+  const deleteTradeB = vi.fn();
+  const cancelOpenOrderA = vi.fn();
+  const cancelOpenOrderB = vi.fn();
+  const reloadTradeA = vi.fn();
+  const reloadTradeB = vi.fn();
 
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -22,10 +28,16 @@ describe('ftbot wrapper force-action routing', () => {
       'bot-a': {
         forceentry: forceEntryA,
         forceexit: forceExitA,
+        deleteTrade: deleteTradeA,
+        cancelOpenOrder: cancelOpenOrderA,
+        reloadTrade: reloadTradeA,
       } as unknown as BotSubStore,
       'bot-b': {
         forceentry: forceEntryB,
         forceexit: forceExitB,
+        deleteTrade: deleteTradeB,
+        cancelOpenOrder: cancelOpenOrderB,
+        reloadTrade: reloadTradeB,
       } as unknown as BotSubStore,
     };
     return botStore;
@@ -72,5 +84,41 @@ describe('ftbot wrapper force-action routing', () => {
 
     expect(forceEntryA).not.toHaveBeenCalled();
     expect(forceEntryB).not.toHaveBeenCalled();
+  });
+
+  it('rejects delete when the explicit target bot no longer exists', async () => {
+    const botStore = createStore();
+
+    delete botStore.botStores['bot-b'];
+
+    await expect(
+      botStore.deleteTradeMulti({ botId: 'bot-b', tradeid: '7' }),
+    ).rejects.toThrow('Unknown bot target: bot-b');
+    expect(deleteTradeA).not.toHaveBeenCalled();
+    expect(deleteTradeB).not.toHaveBeenCalled();
+  });
+
+  it('rejects cancel when the explicit target bot no longer exists', async () => {
+    const botStore = createStore();
+
+    delete botStore.botStores['bot-b'];
+
+    await expect(
+      botStore.cancelOpenOrderMulti({ botId: 'bot-b', tradeid: '7' }),
+    ).rejects.toThrow('Unknown bot target: bot-b');
+    expect(cancelOpenOrderA).not.toHaveBeenCalled();
+    expect(cancelOpenOrderB).not.toHaveBeenCalled();
+  });
+
+  it('rejects reload when the explicit target bot no longer exists', async () => {
+    const botStore = createStore();
+
+    delete botStore.botStores['bot-b'];
+
+    await expect(
+      botStore.reloadTradeMulti({ botId: 'bot-b', tradeid: '7' }),
+    ).rejects.toThrow('Unknown bot target: bot-b');
+    expect(reloadTradeA).not.toHaveBeenCalled();
+    expect(reloadTradeB).not.toHaveBeenCalled();
   });
 });

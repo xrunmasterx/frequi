@@ -2,7 +2,7 @@
 import { getPaginationRowModel } from '@tanstack/vue-table';
 import type { TableColumn, TableRow } from '@nuxt/ui';
 import type { MultiDeletePayload, MultiForceExitPayload, Trade } from '@/types';
-import type { BotSubStore } from '@/stores/ftbotwrapper';
+import { isUnknownBotTarget, type BotSubStore } from '@/stores/ftbotwrapper';
 import { formatTradeActionTarget } from '@/utils/tradeActionTarget';
 
 import { useRouter } from 'vue-router';
@@ -37,6 +37,15 @@ const { confirm } = useConfirmBox();
 const { forceEntryDialog, forceExitDialog } = useForceTrade();
 const { t } = useAppI18n();
 const emptyDisplayText = computed(() => props.emptyText ?? t('trade.tradesEmpty'));
+
+async function dispatchTradeAction(action: () => Promise<unknown>) {
+  try {
+    await action();
+  } catch (error) {
+    if (!isUnknownBotTarget(error)) throw error;
+    showAlert(t('trade.targetBotUnavailable'), 'error');
+  }
+}
 
 function formatPriceWithDecimals(price: number) {
   return formatPrice(price, botStore.activeBot.stakeCurrencyDecimals);
@@ -146,7 +155,7 @@ async function removeTradeHandler(item: Trade) {
       tradeid: String(item.trade_id),
       botId: targetBot.botId,
     };
-    botStore.deleteTradeMulti(payload).catch((error) => console.log(error.response));
+    await dispatchTradeAction(() => botStore.deleteTradeMulti(payload));
   }
 }
 
@@ -181,12 +190,14 @@ async function cancelOpenOrderHandler(item: Trade) {
       tradeid: String(item.trade_id),
       botId: targetBot.botId,
     };
-    botStore.cancelOpenOrderMulti(payload).catch((error) => console.log(error.response));
+    await dispatchTradeAction(() => botStore.cancelOpenOrderMulti(payload));
   }
 }
 
-function reloadTradeHandler(item: Trade) {
-  botStore.reloadTradeMulti({ tradeid: String(item.trade_id), botId: item.botId });
+async function reloadTradeHandler(item: Trade) {
+  await dispatchTradeAction(() =>
+    botStore.reloadTradeMulti({ tradeid: String(item.trade_id), botId: item.botId }),
+  );
 }
 
 function handleForceEntry(item: Trade) {

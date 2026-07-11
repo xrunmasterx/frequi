@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
-import { defineComponent, markRaw } from 'vue';
+import { defineComponent, markRaw, toRaw } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import TradeList from '@/components/ftbot/TradeList.vue';
@@ -13,6 +13,14 @@ const confirm = vi.fn();
 const forceSellMulti = vi.fn();
 const deleteTradeMulti = vi.fn();
 const cancelOpenOrderMulti = vi.fn();
+const reloadTradeMulti = vi.fn();
+const { showAlert } = vi.hoisted(() => ({ showAlert: vi.fn() }));
+const deleteTradeA = vi.fn();
+const deleteTradeB = vi.fn();
+const cancelOpenOrderA = vi.fn();
+const cancelOpenOrderB = vi.fn();
+const reloadTradeA = vi.fn();
+const reloadTradeB = vi.fn();
 
 vi.mock('@/composables/useForceTrade', () => ({
   useForceTrade: () => ({ forceEntryDialog, forceExitDialog }),
@@ -23,11 +31,19 @@ vi.mock('@/composables/useConfirmBox', () => ({
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+vi.mock('@/utils/alerts', () => ({ showAlert }));
 
 const TradeActionsPopoverStub = defineComponent({
   name: 'TradeActionsPopoverStub',
   props: ['trade', 'enableForceEntry', 'botFeatures'],
-  emits: ['force-exit', 'force-exit-partial', 'force-entry', 'delete-trade', 'cancel-open-order'],
+  emits: [
+    'force-exit',
+    'force-exit-partial',
+    'force-entry',
+    'delete-trade',
+    'cancel-open-order',
+    'reload-trade',
+  ],
   template: `
     <div>
       <button data-test="full-exit" @click="$emit('force-exit', trade)" />
@@ -35,6 +51,7 @@ const TradeActionsPopoverStub = defineComponent({
       <button data-test="increase-position" @click="$emit('force-entry', trade)" />
       <button data-test="delete-trade" @click="$emit('delete-trade', trade)" />
       <button data-test="cancel-open-order" @click="$emit('cancel-open-order', trade)" />
+      <button data-test="reload-trade" @click="$emit('reload-trade', trade)" />
     </div>
   `,
 });
@@ -55,6 +72,9 @@ describe('TradeList row force actions', () => {
   const botAFeatures = markRaw({ forceEnterShort: false });
   const botBFeatures = markRaw({ forceEnterShort: true });
   let botStore: ReturnType<typeof useBotStore>;
+  let deleteTradeDispatch: ReturnType<typeof useBotStore>['deleteTradeMulti'];
+  let cancelOpenOrderDispatch: ReturnType<typeof useBotStore>['cancelOpenOrderMulti'];
+  let reloadTradeDispatch: ReturnType<typeof useBotStore>['reloadTradeMulti'];
 
   beforeEach(() => {
     const pinia = createPinia();
@@ -74,6 +94,9 @@ describe('TradeList row force actions', () => {
         },
         botFeatures: botAFeatures,
         stakeCurrencyDecimals: 2,
+        deleteTrade: deleteTradeA,
+        cancelOpenOrder: cancelOpenOrderA,
+        reloadTrade: reloadTradeA,
       } as unknown as BotSubStore,
       'bot-b': {
         botId: 'bot-b',
@@ -86,14 +109,22 @@ describe('TradeList row force actions', () => {
         },
         botFeatures: botBFeatures,
         stakeCurrencyDecimals: 6,
+        deleteTrade: deleteTradeB,
+        cancelOpenOrder: cancelOpenOrderB,
+        reloadTrade: reloadTradeB,
       } as unknown as BotSubStore,
     };
+    deleteTradeDispatch = botStore.deleteTradeMulti;
+    cancelOpenOrderDispatch = botStore.cancelOpenOrderMulti;
+    reloadTradeDispatch = botStore.reloadTradeMulti;
     botStore.forceSellMulti = forceSellMulti;
     botStore.deleteTradeMulti = deleteTradeMulti;
     botStore.cancelOpenOrderMulti = cancelOpenOrderMulti;
+    botStore.reloadTradeMulti = reloadTradeMulti;
     forceSellMulti.mockResolvedValue(undefined);
     deleteTradeMulti.mockResolvedValue(undefined);
     cancelOpenOrderMulti.mockResolvedValue(undefined);
+    reloadTradeMulti.mockResolvedValue(undefined);
   });
 
   function mountTradeList() {
@@ -179,4 +210,57 @@ describe('TradeList row force actions', () => {
       );
     },
   );
+
+  it.each([
+    ['delete-trade', 'deleteTradeMulti', deleteTradeA, deleteTradeB],
+    ['cancel-open-order', 'cancelOpenOrderMulti', cancelOpenOrderA, cancelOpenOrderB],
+  ] as const)(
+    'shows one unavailable-target error when bot B disappears during %s confirmation',
+    async (hook, actionName, apiCallA, apiCallB) => {
+      let resolveConfirm!: (value: boolean) => void;
+      confirm.mockImplementation(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveConfirm = resolve;
+          }),
+      );
+      botStore[actionName] =
+        actionName === 'deleteTradeMulti' ? deleteTradeDispatch : cancelOpenOrderDispatch;
+      const wrapper = mountTradeList();
+
+      await wrapper.get(`[data-test="${hook}"]`).trigger('click');
+      delete toRaw(botStore.botStores)['bot-b'];
+      resolveConfirm(true);
+      await flushPromises();
+
+      expect(apiCallA).not.toHaveBeenCalled();
+      expect(apiCallB).not.toHaveBeenCalled();
+      expect(showAlert).toHaveBeenCalledOnce();
+      expect(showAlert).toHaveBeenCalledWith(
+        'The selected target bot is no longer available. The action was blocked. / ' +
+          '目标机器人已不可用，本次操作已被阻止。',
+        'error',
+      );
+    },
+  );
+
+  it('shows one unavailable-target error when bot B disappears before reload dispatch', async () => {
+    botStore.reloadTradeMulti = vi.fn(async (payload) => {
+      delete toRaw(botStore.botStores)['bot-b'];
+      return reloadTradeDispatch(payload);
+    });
+    const wrapper = mountTradeList();
+
+    await wrapper.get('[data-test="reload-trade"]').trigger('click');
+    await flushPromises();
+
+    expect(reloadTradeA).not.toHaveBeenCalled();
+    expect(reloadTradeB).not.toHaveBeenCalled();
+    expect(showAlert).toHaveBeenCalledOnce();
+    expect(showAlert).toHaveBeenCalledWith(
+      'The selected target bot is no longer available. The action was blocked. / ' +
+        '目标机器人已不可用，本次操作已被阻止。',
+      'error',
+    );
+  });
 });
