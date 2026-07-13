@@ -104,6 +104,8 @@ watch(
 // Navigation items array
 type NavItem = NavigationMenuItem & { visible?: boolean; mobileOnly?: boolean };
 
+const canOpenResearch = computed(() => botStore.canRunBacktest);
+
 const navItems = computed<NavItem[]>(() => [
   {
     label: t('nav.trade'),
@@ -121,6 +123,12 @@ const navItems = computed<NavItem[]>(() => [
     label: t('nav.chart'),
     to: '/graph',
     icon: 'i-mdi-chart-line',
+  },
+  {
+    label: t('nav.research'),
+    to: '/research',
+    visible: canOpenResearch.value,
+    icon: 'i-mdi-chart-timeline-variant',
   },
   {
     label: t('nav.logs'),

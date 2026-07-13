@@ -3,6 +3,7 @@ export interface ConfirmDialogBoxProps {
   title: string;
   description?: string;
   message: string;
+  targetContext?: string;
   cancelText?: string;
   confirmText?: string;
 }
@@ -19,7 +20,14 @@ defineEmits<{
 <template>
   <UModal :title="props.title" :ui="{ footer: 'justify-end' }" :description="modalDescription">
     <template #body>
-      <div class="whitespace-pre-wrap">
+      <div
+        v-if="props.targetContext"
+        data-test="trade-action-target"
+        class="mb-3 font-medium"
+      >
+        {{ props.targetContext }}
+      </div>
+      <div data-test="trade-action-message" class="whitespace-pre-wrap">
         {{ props.message }}
       </div>
     </template>

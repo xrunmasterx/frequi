@@ -2,6 +2,8 @@
 import { getPaginationRowModel } from '@tanstack/vue-table';
 import type { TableColumn, TableRow } from '@nuxt/ui';
 import type { MultiDeletePayload, MultiForceExitPayload, Trade } from '@/types';
+import { isUnknownBotTarget, type BotSubStore } from '@/stores/ftbotwrapper';
+import { formatTradeActionTarget } from '@/utils/tradeActionTarget';
 
 import { useRouter } from 'vue-router';
 
@@ -35,6 +37,15 @@ const { confirm } = useConfirmBox();
 const { forceEntryDialog, forceExitDialog } = useForceTrade();
 const { t } = useAppI18n();
 const emptyDisplayText = computed(() => props.emptyText ?? t('trade.tradesEmpty'));
+
+async function dispatchTradeAction(action: () => Promise<unknown>) {
+  try {
+    await action();
+  } catch (error) {
+    if (!isUnknownBotTarget(error)) throw error;
+    showAlert(t('trade.targetBotUnavailable'), 'error');
+  }
+}
 
 function formatPriceWithDecimals(price: number) {
   return formatPrice(price, botStore.activeBot.stakeCurrencyDecimals);
@@ -91,6 +102,7 @@ async function forceExitHandler(
   item: Trade,
   ordertype: 'limit' | 'market' | undefined = undefined,
 ) {
+  const targetBot = getBotForTradeOrThrow(item);
   const message = ordertype
     ? formatLocaleText(t('trade.confirmExitTradeUsingOrder'), {
         tradeId: item.trade_id,
@@ -107,12 +119,13 @@ async function forceExitHandler(
       title: t('trade.forceExitTrade'),
       description: t('trade.actionCannotBeUndone'),
       message,
+      targetContext: formatTradeActionTarget(targetBot, t),
       confirmText: t('common.confirm'),
     }))
   ) {
     const payload: MultiForceExitPayload = {
       tradeid: String(item.trade_id),
-      botId: item.botId,
+      botId: targetBot.botId,
     };
     if (ordertype) {
       payload.ordertype = ordertype;
@@ -125,6 +138,7 @@ async function forceExitHandler(
 }
 
 async function removeTradeHandler(item: Trade) {
+  const targetBot = getBotForTradeOrThrow(item);
   if (
     await confirm({
       title: t('trade.deleteTrade'),
@@ -133,25 +147,33 @@ async function removeTradeHandler(item: Trade) {
         tradeId: item.trade_id,
         pair: item.pair,
       }),
+      targetContext: formatTradeActionTarget(targetBot, t),
       confirmText: t('common.confirm'),
     })
   ) {
     const payload: MultiDeletePayload = {
       tradeid: String(item.trade_id),
-      botId: item.botId,
+      botId: targetBot.botId,
     };
-    botStore.deleteTradeMulti(payload).catch((error) => console.log(error.response));
+    await dispatchTradeAction(() => botStore.deleteTradeMulti(payload));
   }
 }
 
 function forceExitPartialHandler(item: Trade) {
+  const targetBot = getBotForTradeOrThrow(item);
   forceExitDialog({
+    botId: item.botId,
     trade: item,
-    stakeCurrencyDecimals: botStore.activeBot.botState.stake_currency_decimals ?? 3,
+    stakeCurrencyDecimals: targetBot.stakeCurrencyDecimals,
   });
 }
 
+function getBotForTradeOrThrow(item: Trade): BotSubStore {
+  return botStore.getBotOrThrow(item.botId);
+}
+
 async function cancelOpenOrderHandler(item: Trade) {
+  const targetBot = getBotForTradeOrThrow(item);
   if (
     await confirm({
       title: t('trade.cancelOpenOrder'),
@@ -160,23 +182,27 @@ async function cancelOpenOrderHandler(item: Trade) {
         tradeId: item.trade_id,
         pair: item.pair,
       }),
+      targetContext: formatTradeActionTarget(targetBot, t),
       confirmText: t('common.confirm'),
     })
   ) {
     const payload: MultiDeletePayload = {
       tradeid: String(item.trade_id),
-      botId: item.botId,
+      botId: targetBot.botId,
     };
-    botStore.cancelOpenOrderMulti(payload).catch((error) => console.log(error.response));
+    await dispatchTradeAction(() => botStore.cancelOpenOrderMulti(payload));
   }
 }
 
-function reloadTradeHandler(item: Trade) {
-  botStore.reloadTradeMulti({ tradeid: String(item.trade_id), botId: item.botId });
+async function reloadTradeHandler(item: Trade) {
+  await dispatchTradeAction(() =>
+    botStore.reloadTradeMulti({ tradeid: String(item.trade_id), botId: item.botId }),
+  );
 }
 
 function handleForceEntry(item: Trade) {
   forceEntryDialog({
+    botId: item.botId,
     pair: item.pair,
     positionIncrease: true,
   });
@@ -249,10 +275,11 @@ const rowSelection = computed({
       </template>
       <template #actions-cell="{ row }">
         <TradeActionsPopover
+          v-if="botStore.botStores[row.original.botId]"
           :id="row.original.trade_id ?? row.index"
-          :enable-force-entry="botStore.activeBot.botState.force_entry_enable"
+          :enable-force-entry="botStore.botStores[row.original.botId].botState.force_entry_enable"
           :trade="row.original"
-          :bot-features="botStore.activeBot.botFeatures"
+          :bot-features="botStore.botStores[row.original.botId].botFeatures"
           @delete-trade="removeTradeHandler(row.original)"
           @force-exit="forceExitHandler"
           @force-exit-partial="forceExitPartialHandler"

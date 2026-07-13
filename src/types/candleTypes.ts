@@ -160,6 +160,9 @@ export interface ChartOverlayMeta {
 
 export type ChartLayerSource =
   | 'market'
+  | 'feature'
+  | 'event'
+  | 'document'
   | 'watch'
   | 'strategy'
   | 'execution'
@@ -215,9 +218,17 @@ export interface ChartWindowMeta {
   last_candle_complete: boolean;
 }
 
+export interface ChartAxisMeta {
+  mode: 'time' | 'trading_session';
+  source_column: string;
+  display_column?: string | null;
+  timezone?: string | null;
+}
+
 export interface ChartResponseMeta {
   schema_version: number;
   window: ChartWindowMeta;
+  axis?: ChartAxisMeta | null;
   layers: ChartLayerMeta[];
   warnings: string[];
 }

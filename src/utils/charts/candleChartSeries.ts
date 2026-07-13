@@ -5,6 +5,7 @@ import { getSeriesSourceLabel } from '@/utils/charts/chartSeriesMeta';
 import type { BarSeriesOption, LineSeriesOption, ScatterSeriesOption } from 'echarts';
 
 export type SupportedSeriesTypes = (LineSeriesOption | BarSeriesOption | ScatterSeriesOption) & {
+  id?: string | number;
   seriesColumn?: string;
 };
 
@@ -12,6 +13,35 @@ const CANDLE_TIME_BAR_ALIGNMENT = {
   barGap: '-100%',
   barCategoryGap: '20%',
 } as const;
+
+const STABLE_SERIES_COLORS = [
+  '#2563eb',
+  '#f97316',
+  '#16a34a',
+  '#dc2626',
+  '#7c3aed',
+  '#0891b2',
+  '#ca8a04',
+  '#db2777',
+  '#4f46e5',
+  '#059669',
+  '#ea580c',
+  '#9333ea',
+];
+
+export function getStableSeriesColor(key: string): string {
+  let hash = 0;
+
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 31 + key.charCodeAt(index)) >>> 0;
+  }
+
+  return STABLE_SERIES_COLORS[hash % STABLE_SERIES_COLORS.length]!;
+}
+
+function getSeriesId(key: string, axis: number, suffix?: string): string {
+  return suffix ? `plot:${axis}:${key}:${suffix}` : `plot:${axis}:${key}`;
+}
 
 export function isIndicatorVisible(value: IndicatorConfig): boolean {
   return value.hidden !== true;
@@ -66,13 +96,14 @@ export function generateCandleSeries(
   meta?: ChartResponseMeta | null,
 ): SupportedSeriesTypes {
   const sp: SupportedSeriesTypes = {
+    id: getSeriesId(key, axis),
     name: formatIndicatorLabel(key, meta),
     type: value.type || 'line',
     seriesColumn: key,
     xAxisIndex: axis,
     yAxisIndex: axis,
     itemStyle: {
-      color: value.color || randomColor(),
+      color: value.color || getStableSeriesColor(key),
     },
     encode: {
       x: colDate,
@@ -114,6 +145,7 @@ export function generateAreaCandleSeries(
   ) as LineSeriesOption;
 
   const areaOptions: LineSeriesOption = {
+    id: getSeriesId(key, axis, 'area'),
     stack: key,
     stackStrategy: 'all',
     lineStyle: {

@@ -108,6 +108,46 @@ describe('useCandleChartTooltip', () => {
     expect(html).not.toContain('1782698400000');
   });
 
+  it('renders the real row timestamp when the x axis uses a synthetic display index', () => {
+    const realTimestamp = 1_783_482_540_000;
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [[realTimestamp, 400, 402, 399, 401, 1000, 1]],
+      },
+      series: [
+        {
+          name: 'Candles',
+          type: 'candlestick',
+          yAxisIndex: 0,
+          encode: {
+            x: 6,
+            y: [1, 4, 3, 2],
+          },
+        },
+      ],
+    });
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: 1,
+        axisValueLabel: '1',
+        marker: '<span></span>',
+        encode: {
+          x: [6],
+          y: [1, 4, 3, 2],
+        },
+        value: [realTimestamp, 400, 402, 399, 401, 1000, 1],
+      },
+    ] as never);
+
+    expect(html).toContain('2026-07');
+    expect(html).not.toContain('1970');
+  });
+
   it('does not render empty entry or exit signal rows', () => {
     const html = renderTooltip([
       {
@@ -840,6 +880,79 @@ describe('useCandleChartTooltip', () => {
     expect(html).toContain('trend');
   });
 
+  it('renders decision snapshot point evidence from the real row timestamp when axisValue is synthetic', () => {
+    const timestamp = 1_782_698_400_000;
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'decision.snapshot',
+          source: 'decision_snapshot',
+          status: 'ok',
+          label: 'Decision Snapshot',
+          series: [],
+          points: [
+            {
+              timestamp,
+              payload: {
+                decision: 'enter_long',
+                strategy: 'TestStrategy',
+              },
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [[timestamp, 100, 108, 90, 105, 61, 44, 1]],
+        meta,
+      },
+      series: [
+        {
+          name: 'Candles',
+          type: 'candlestick',
+          yAxisIndex: 0,
+          encode: {
+            x: 7,
+            y: [1, 4, 3, 2],
+          },
+        },
+      ],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: 1,
+        axisValueLabel: '1',
+        marker: '<span></span>',
+        encode: {
+          x: [7],
+          y: [1, 4, 3, 2],
+        },
+        value: [timestamp, 100, 108, 90, 105, 61, 44, 1],
+      },
+    ] as never);
+
+    expect(html).toContain('Bot Decision');
+    expect(html).toContain('Decision');
+    expect(html).toContain('enter_long');
+    expect(html).toContain('Strategy');
+    expect(html).toContain('TestStrategy');
+  });
+
   it('does not render decision snapshot point evidence for a different timestamp', () => {
     const meta: ChartResponseMeta = {
       schema_version: 1,
@@ -904,6 +1017,122 @@ describe('useCandleChartTooltip', () => {
 
     expect(html).not.toContain('Bot Decision');
     expect(html).not.toContain('enter_long');
+  });
+
+  it('renders matching event and document point payload rows without changing decision snapshot rows', () => {
+    const timestamp = 1_782_698_400_000;
+    const meta: ChartResponseMeta = {
+      schema_version: 1,
+      window: {
+        requested_count: 100,
+        returned_count: 100,
+        warmup_count: 30,
+        last_candle_complete: true,
+      },
+      layers: [
+        {
+          id: 'decision.snapshot',
+          source: 'decision_snapshot',
+          status: 'ok',
+          label: 'Decision Snapshot',
+          series: [],
+          points: [
+            {
+              timestamp,
+              payload: {
+                decision: 'enter_long',
+                strategy: 'TestStrategy',
+              },
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'event.limit_pool',
+          source: 'event',
+          status: 'ok',
+          label: 'Limit Pool',
+          series: [],
+          points: [
+            {
+              timestamp,
+              label: 'limit_up',
+              payload: {
+                event_type: 'limit_up',
+                title: 'Daily Limit Up',
+                nested: { rank: 1 },
+                empty: null,
+              },
+            },
+          ],
+          warnings: [],
+        },
+        {
+          id: 'document.announcements',
+          source: 'document',
+          status: 'ok',
+          label: 'Announcements',
+          series: [],
+          points: [
+            {
+              timestamp,
+              payload: {
+                title: 'Board Meeting',
+                url: 'https://example.test/announcement',
+              },
+            },
+          ],
+          warnings: [],
+        },
+      ],
+      warnings: [],
+    };
+    const chartOptions = shallowRef<EChartsOption>({
+      dataset: {
+        source: [],
+        meta,
+      },
+      series: [
+        {
+          name: 'Candles',
+          type: 'candlestick',
+          yAxisIndex: 0,
+          encode: {
+            y: [1, 4, 3, 2],
+          },
+        },
+      ],
+    } as EChartsOption);
+
+    const html = useCandleChartTooltip(chartOptions).formatCandleTooltip([
+      {
+        componentType: 'series',
+        seriesIndex: 0,
+        seriesName: 'Candles',
+        seriesType: 'candlestick',
+        axisValue: timestamp,
+        axisValueLabel: String(timestamp),
+        marker: '<span></span>',
+        encode: {
+          y: [1, 4, 3, 2],
+        },
+        value: [timestamp, 100, 108, 90, 105],
+      },
+    ] as never);
+
+    expect(html.indexOf('Bot Decision')).toBeLessThan(html.indexOf('Limit Pool'));
+    expect(html.indexOf('Limit Pool')).toBeLessThan(html.indexOf('Announcements'));
+    expect(html).toContain('Decision');
+    expect(html).toContain('enter_long');
+    expect(html).toContain('Label');
+    expect(html).toContain('limit_up');
+    expect(html).toContain('event_type');
+    expect(html).toContain('title');
+    expect(html).toContain('Daily Limit Up');
+    expect(html).toContain('rank');
+    expect(html).not.toContain('empty');
+    expect(html).toContain('Board Meeting');
+    expect(html).toContain('https://example.test/announcement');
   });
 
   it('keeps legacy tooltip label and y-axis group when metadata misses a series column', () => {

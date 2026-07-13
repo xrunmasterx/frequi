@@ -9,6 +9,7 @@ import type {
   TimeSummaryReturnValue,
   MultiCancelOpenOrderPayload,
   MultiDeletePayload,
+  MultiForceEnterPayload,
   MultiForceExitPayload,
   MultiReloadTradePayload,
   ProfitStats,
@@ -25,6 +26,10 @@ const AUTH_SELECTED_BOT = 'ftSelectedBot';
 import axios from 'axios';
 
 export type BotSubStore = ReturnType<typeof createBotSubStore>;
+
+export function isUnknownBotTarget(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith('Unknown bot target:');
+}
 
 export interface SubStores {
   [key: string]: BotSubStore;
@@ -77,7 +82,9 @@ interface BotStoreSetup {
   pingAll: () => Promise<void>;
   allGetState: () => void;
   allGetDaily: (payload: TimeSummaryPayload) => Promise<void>;
+  getBotOrThrow: (botId: string) => BotSubStore;
   forceSellMulti: (forcesellPayload: MultiForceExitPayload) => Promise<unknown>;
+  forceEntryMulti: (payload: MultiForceEnterPayload) => Promise<unknown>;
   deleteTradeMulti: (deletePayload: MultiDeletePayload) => Promise<unknown>;
   cancelOpenOrderMulti: (deletePayload: MultiCancelOpenOrderPayload) => Promise<unknown>;
   reloadTradeMulti: (deletePayload: MultiReloadTradePayload) => Promise<unknown>;
@@ -473,28 +480,32 @@ export const useBotStore = defineStore('ftbot-wrapper', (): BotStoreSetup => {
     await Promise.all(updates);
   }
 
-  async function forceSellMulti(forcesellPayload: MultiForceExitPayload) {
-    const bot = botStores.value[forcesellPayload.botId];
-    if (!bot) return;
-    return bot.forceexit(forcesellPayload);
+  function getBotOrThrow(botId: string): BotSubStore {
+    const bot = botStores.value[botId];
+    if (!bot) {
+      throw new Error(`Unknown bot target: ${botId}`);
+    }
+    return bot;
+  }
+
+  async function forceSellMulti({ botId, ...payload }: MultiForceExitPayload) {
+    return getBotOrThrow(botId).forceexit(payload);
+  }
+
+  async function forceEntryMulti({ botId, ...payload }: MultiForceEnterPayload) {
+    return getBotOrThrow(botId).forceentry(payload);
   }
 
   async function deleteTradeMulti(deletePayload: MultiDeletePayload) {
-    const bot = botStores.value[deletePayload.botId];
-    if (!bot) return;
-    return bot.deleteTrade(deletePayload.tradeid);
+    return getBotOrThrow(deletePayload.botId).deleteTrade(deletePayload.tradeid);
   }
 
   async function cancelOpenOrderMulti(deletePayload: MultiCancelOpenOrderPayload) {
-    const bot = botStores.value[deletePayload.botId];
-    if (!bot) return;
-    return bot.cancelOpenOrder(deletePayload.tradeid);
+    return getBotOrThrow(deletePayload.botId).cancelOpenOrder(deletePayload.tradeid);
   }
 
   async function reloadTradeMulti(deletePayload: MultiReloadTradePayload) {
-    const bot = botStores.value[deletePayload.botId];
-    if (!bot) return;
-    return bot.reloadTrade(deletePayload.tradeid);
+    return getBotOrThrow(deletePayload.botId).reloadTrade(deletePayload.tradeid);
   }
 
   async function allGetTimeSummary(period: TimeSummaryOptions, payload?: TimeSummaryPayload) {
@@ -570,7 +581,9 @@ export const useBotStore = defineStore('ftbot-wrapper', (): BotStoreSetup => {
     pingAll,
     allGetState,
     allGetDaily,
+    getBotOrThrow,
     forceSellMulti,
+    forceEntryMulti,
     deleteTradeMulti,
     cancelOpenOrderMulti,
     reloadTradeMulti,

@@ -212,6 +212,16 @@ describe('deep coverage locale labels', () => {
     expect(exitWithOrderPrompt).not.toContain('Limit /');
   });
 
+  it('resolves execution target identities in both supported languages', () => {
+    expect(resolveLocaleText('trade.actionTargetDryRun', 'en')).toBe(
+      'Target bot: {botName} ({botId}) · {exchange} · {tradingMode} · DRY-RUN',
+    );
+    expect(resolveLocaleText('trade.actionTargetLive', 'zh-CN')).toBe(
+      '目标机器人：{botName}（{botId}）· {exchange} · {tradingMode} · 实盘',
+    );
+    expect(resolveLocaleText('trade.actionTargetUnknown', 'en')).toContain('UNKNOWN ENVIRONMENT');
+  });
+
   it('resolves final bilingual UI and toast labels', () => {
     expect(resolveLocaleText('common.editThis', 'en')).toBe('Edit this {item}.');
     expect(resolveLocaleText('common.duplicateThis', 'en')).toBe('Duplicate this {item}.');

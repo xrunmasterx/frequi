@@ -15,6 +15,11 @@ export interface ForceEnterPayload {
   leverage?: number;
 }
 
+/** Interface only used internally to ensure the right bot is being called in a multibot environment. */
+export interface MultiForceEnterPayload extends ForceEnterPayload {
+  botId: string;
+}
+
 export interface ForceExitPayload {
   tradeid: string | number;
   ordertype?: string;

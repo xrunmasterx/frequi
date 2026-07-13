@@ -71,7 +71,7 @@ import { BacktestSteps, LoadingStatus, RunModes, TimeSummaryOptions } from '@/ty
 import type { FTWsMessage } from '@/types/wsMessageTypes';
 import { FtWsMessageTypes } from '@/types/wsMessageTypes';
 import { useWebSocket } from '@vueuse/core';
-import type { AxiosResponse } from 'axios';
+import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
 
 import { evaluateFeatures } from '@/utils/features';
@@ -80,6 +80,10 @@ import { runDedupedChartRefresh } from '@/utils/tradeChartRefresh';
 export function createBotSubStore(botId: string, botName: string) {
   const loginInfo = useLoginInfo(botId);
   const { api } = useApi(loginInfo, botId);
+  const authenticatedApi = markRaw<Pick<AxiosInstance, 'get' | 'post'>>({
+    get: api.get.bind(api),
+    post: api.post.bind(api),
+  });
 
   const { showAlert } = useAlertForBot(botName);
 
@@ -1641,6 +1645,7 @@ export function createBotSubStore(botId: string, botName: string) {
     // #endregion websocket handling
 
     return {
+      api: authenticatedApi,
       websocketStarted,
       isSelected,
       ping,

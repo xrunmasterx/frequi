@@ -96,6 +96,134 @@ function latestLegendData(): string[] {
   return option?.legend?.data ?? [];
 }
 
+function aShareTradingSessionDataset(): PairHistory & { meta: ChartResponseMeta } {
+  return {
+    strategy: '',
+    pair: '688017.SH',
+    timeframe: '1m',
+    timeframe_ms: 60000,
+    columns: ['__date_ts', 'open', 'high', 'low', 'close', 'volume'],
+    all_columns: ['__date_ts', 'open', 'high', 'low', 'close', 'volume'],
+    data: [
+      [Date.UTC(2026, 6, 8, 2, 29), 400, 401, 399, 400.5, 1000],
+      [Date.UTC(2026, 6, 8, 3, 16), 401, 402, 400, 401.5, 1100],
+      [Date.UTC(2026, 6, 8, 5, 0), 402, 403, 401, 402.5, 1200],
+    ],
+    annotations: [],
+    length: 3,
+    buy_signals: 0,
+    sell_signals: 0,
+    last_analyzed: 0,
+    data_start_ts: Date.UTC(2026, 6, 8, 2, 29),
+    data_start: '2026-07-08 02:29:00+00:00',
+    data_stop: '2026-07-08 05:00:00+00:00',
+    data_stop_ts: Date.UTC(2026, 6, 8, 5, 0),
+    meta: {
+      schema_version: 1,
+      window: {
+        requested_count: 3,
+        returned_count: 3,
+        warmup_count: 0,
+        last_candle_complete: true,
+      },
+      axis: {
+        mode: 'trading_session',
+        source_column: '__date_ts',
+        display_column: '__display_x',
+        timezone: 'Asia/Shanghai',
+      },
+      layers: [],
+      warnings: [],
+    },
+  };
+}
+
+function aShareTradingSessionDatasetWithDisplayColumn(): PairHistory & { meta: ChartResponseMeta } {
+  return {
+    strategy: '',
+    pair: '688017.SH',
+    timeframe: '1m',
+    timeframe_ms: 60000,
+    columns: ['__date_ts', 'open', 'high', 'low', 'close', 'volume', '__display_x'],
+    all_columns: ['__date_ts', 'open', 'high', 'low', 'close', 'volume', '__display_x'],
+    data: [
+      [Date.UTC(2026, 6, 8, 2, 29), 400, 401, 399, 400.5, 1000, 0],
+      [Date.UTC(2026, 6, 8, 3, 16), 401, 402, 400, 401.5, 1100, 1],
+      [Date.UTC(2026, 6, 8, 5, 0), 402, 403, 401, 402.5, 1200, 2],
+    ],
+    annotations: [],
+    length: 3,
+    buy_signals: 0,
+    sell_signals: 0,
+    last_analyzed: 0,
+    data_start_ts: Date.UTC(2026, 6, 8, 2, 29),
+    data_start: '2026-07-08 02:29:00+00:00',
+    data_stop: '2026-07-08 05:00:00+00:00',
+    data_stop_ts: Date.UTC(2026, 6, 8, 5, 0),
+    meta: {
+      schema_version: 1,
+      window: {
+        requested_count: 3,
+        returned_count: 3,
+        warmup_count: 0,
+        last_candle_complete: true,
+      },
+      axis: {
+        mode: 'trading_session',
+        source_column: '__date_ts',
+        display_column: '__display_x',
+        timezone: 'Asia/Shanghai',
+      },
+      layers: [],
+      warnings: [],
+    },
+  };
+}
+
+function aShareTradingSessionDatasetWithCustomSourceColumn(): PairHistory & {
+  meta: ChartResponseMeta;
+} {
+  return {
+    strategy: '',
+    pair: '688017.SH',
+    timeframe: '1m',
+    timeframe_ms: 60000,
+    columns: ['source_ts', 'open', 'high', 'low', 'close', 'volume', '__display_x'],
+    all_columns: ['source_ts', 'open', 'high', 'low', 'close', 'volume', '__display_x'],
+    data: [
+      [Date.UTC(2026, 6, 8, 2, 29), 400, 401, 399, 400.5, 1000, 0],
+      [Date.UTC(2026, 6, 8, 3, 16), 401, 402, 400, 401.5, 1100, 1],
+      [Date.UTC(2026, 6, 8, 5, 0), 402, 403, 401, 402.5, 1200, 2],
+    ],
+    annotations: [],
+    length: 3,
+    buy_signals: 0,
+    sell_signals: 0,
+    last_analyzed: 0,
+    data_start_ts: Date.UTC(2026, 6, 8, 2, 29),
+    data_start: '2026-07-08 02:29:00+00:00',
+    data_stop: '2026-07-08 05:00:00+00:00',
+    data_stop_ts: Date.UTC(2026, 6, 8, 5, 0),
+    meta: {
+      schema_version: 1,
+      window: {
+        requested_count: 3,
+        returned_count: 3,
+        warmup_count: 0,
+        last_candle_complete: true,
+      },
+      axis: {
+        mode: 'trading_session',
+        source_column: 'source_ts',
+        display_column: '__display_x',
+        timezone: 'Asia/Shanghai',
+      },
+      layers: [],
+      warnings: [],
+    },
+  };
+}
+
 describe('CandleChart.vue', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -131,5 +259,114 @@ describe('CandleChart.vue', () => {
     const legendData = latestLegendData();
     expect(legendData).toContain('RSI Label B');
     expect(legendData).not.toContain('RSI Label A');
+  });
+
+  it('uses a sequential display x axis for A-share trading-session chart metadata', async () => {
+    mount(CandleChart, {
+      props: {
+        trades: [],
+        dataset: aShareTradingSessionDataset(),
+        heikinAshi: false,
+        showMarkArea: false,
+        useUTC: true,
+        plotConfig: { main_plot: {}, subplots: {} },
+        theme: 'dark',
+        colorUp: '#00ff00',
+        colorDown: '#ff0000',
+        labelSide: 'right',
+        startCandleCount: 250,
+      },
+    });
+
+    await nextTick();
+
+    const option = setOptionMock.mock.calls.at(-1)?.[0] as {
+      dataset?: { source?: number[][] };
+      xAxis?: Array<{ type?: string; min?: number; max?: number }>;
+      series?: Array<{ encode?: { x?: number } }>;
+    };
+
+    expect(option.dataset?.source?.map((row) => row[0]).slice(0, 3)).toEqual(
+      aShareTradingSessionDataset().data.map((row) => row[0]),
+    );
+    expect(option.dataset?.source?.map((row) => row[6]).slice(0, 3)).toEqual([0, 1, 2]);
+    expect(option.xAxis?.[0]?.type).toBe('value');
+    expect(option.xAxis?.[0]?.min).toBe(0);
+    expect(option.xAxis?.[0]?.max).toBe(7);
+    expect(option.series?.[0]?.encode?.x).toBe(6);
+    expect(option.series?.[1]?.encode?.x).toBe(6);
+  });
+
+  it('reuses an existing backend display column for A-share trading-session metadata', async () => {
+    mount(CandleChart, {
+      props: {
+        trades: [],
+        dataset: aShareTradingSessionDatasetWithDisplayColumn(),
+        heikinAshi: false,
+        showMarkArea: false,
+        useUTC: true,
+        plotConfig: { main_plot: {}, subplots: {} },
+        theme: 'dark',
+        colorUp: '#00ff00',
+        colorDown: '#ff0000',
+        labelSide: 'right',
+        startCandleCount: 250,
+      },
+    });
+
+    await nextTick();
+
+    const option = setOptionMock.mock.calls.at(-1)?.[0] as {
+      dataset?: { source?: number[][] };
+      xAxis?: Array<{ type?: string; min?: number; max?: number }>;
+      series?: Array<{ encode?: { x?: number } }>;
+    };
+
+    expect(option.dataset?.source?.map((row) => row.length).slice(0, 3)).toEqual([7, 7, 7]);
+    expect(option.dataset?.source?.map((row) => row[0]).slice(0, 3)).toEqual(
+      aShareTradingSessionDatasetWithDisplayColumn().data.map((row) => row[0]),
+    );
+    expect(option.dataset?.source?.map((row) => row[6]).slice(0, 3)).toEqual([0, 1, 2]);
+    expect(option.xAxis?.[0]?.type).toBe('value');
+    expect(option.xAxis?.[0]?.min).toBe(0);
+    expect(option.xAxis?.[0]?.max).toBe(7);
+    expect(option.series?.[0]?.encode?.x).toBe(6);
+    expect(option.series?.[1]?.encode?.x).toBe(6);
+  });
+
+  it('uses the metadata source column for trading-session timestamps', async () => {
+    mount(CandleChart, {
+      props: {
+        trades: [],
+        dataset: aShareTradingSessionDatasetWithCustomSourceColumn(),
+        heikinAshi: false,
+        showMarkArea: false,
+        useUTC: true,
+        plotConfig: { main_plot: {}, subplots: {} },
+        theme: 'dark',
+        colorUp: '#00ff00',
+        colorDown: '#ff0000',
+        labelSide: 'right',
+        startCandleCount: 250,
+      },
+    });
+
+    await nextTick();
+
+    const option = setOptionMock.mock.calls.at(-1)?.[0] as {
+      dataset?: { source?: number[][] };
+      xAxis?: Array<{ type?: string; min?: number; max?: number }>;
+      series?: Array<{ encode?: { x?: number } }>;
+    };
+
+    expect(option.dataset?.source?.map((row) => row[0]).slice(0, 3)).toEqual(
+      aShareTradingSessionDatasetWithCustomSourceColumn().data.map((row) => row[0]),
+    );
+    expect(option.dataset?.source?.map((row) => row[6]).slice(0, 3)).toEqual([0, 1, 2]);
+    expect(option.xAxis?.[0]?.type).toBe('value');
+    expect(option.xAxis?.[0]?.min).toBe(0);
+    expect(option.xAxis?.[0]?.max).toBe(7);
+    expect(option.series?.[0]?.encode?.x).toBe(6);
+    expect(option.series?.[1]?.encode?.x).toBe(6);
   });
 });
